@@ -1,0 +1,23 @@
+name: Sync Repo CD
+run-name: Sync ${{ github.event.repository.name }} to ${{ inputs.server-name }}
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+    inputs:
+      server-name:
+        required: true
+        description: Server to deploy to
+        type: string
+        default: 'usa-srv01'
+
+jobs:
+  deploy:
+    uses: dessun-lab/dl-actions/.github/workflows/sync-repo-cd.yml@main
+    secrets: inherit
+    with:
+      server-name: ${{ inputs.server-name || 'usa-srv01' }}
+      repository: ${{ github.event.repository.name }}
