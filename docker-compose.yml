@@ -1,0 +1,27 @@
+services:
+
+  jellyfin:
+    image: linuxserver/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "${JELLYFIN_HOST}:8096:8096"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+    volumes:
+      - /home/devops/runtime/jellyfin/config:/config
+      - /home/devops/runtime/jellyfin/data/media:/data/media
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.1.2
+
+
+networks:
+  arrnetwork:
+    name: arrnet_managed
+    ipam:
+      config:
+        - subnet: 172.18.1.0/16
