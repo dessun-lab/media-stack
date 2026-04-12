@@ -12,12 +12,12 @@ on:
         required: true
         description: Server to deploy to
         type: string
-        default: 'usa-srv01'
+        default: ''
 
 jobs:
   deploy:
     uses: dessun-lab/dl-actions/.github/workflows/sync-repo-cd.yml@main
     secrets: inherit
     with:
-      server-name: ${{ inputs.server-name || 'usa-srv01' }}
+      server-name: ${{ inputs.server-name || vars.DEFAULT_SERVER_NAME }}
       repository: '["arrstack"]'
