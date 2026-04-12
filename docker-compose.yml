@@ -16,7 +16,7 @@ services:
       - /home/devops/runtime/jellyfin/data/media:/data/media
     networks:
       arrnetwork:
-        ipv4_address: 172.18.1.2
+        ipv4_address: 172.18.0.2
 
 
 networks:
@@ -24,4 +24,4 @@ networks:
     name: arrnet_managed
     ipam:
       config:
-        - subnet: 172.18.1.0/16
+        - subnet: 172.18.0.0/16
