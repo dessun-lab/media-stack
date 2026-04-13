@@ -18,6 +18,74 @@ services:
       arrnetwork:
         ipv4_address: 172.18.0.2
 
+  # ============================================================
+  # GLUETUN — VPN Container (kill switch + tunnel)
+  # All VPN-protected services route through this container.
+  # Ports for those services are mapped HERE, not on the services.
+  # ============================================================
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    ports:
+      - "${GLUETUN_HOST}:8081:8080"
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - /home/devops/runtime/arrstack/gluetun:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+      - TZ=${TZ}
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.3
+
+  # ============================================================
+  # QBITTORRENT — Torrent Client (runs through Gluetun VPN)
+  # ALL traffic goes through the VPN tunnel. No direct internet.
+  # ============================================================
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    labels:
+      - deunhealth.restart.on.unhealthy=true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+      - WEBUI_PORT=${QBITTORRENT_WEBUI_PORT_INTERNAL:-8080}
+    volumes:
+      - /home/devops/runtime/arrstack/qbittorrent:/config
+      - /data:/data
+    
+  # ============================================================
+  # DEUNHEALTH — Auto-restarts unhealthy containers
+  # If qBittorrent loses VPN, this restarts it automatically.
+  # ============================================================
+  deunhealth:
+    image: qmcgaw/deunhealth
+    container_name: deunhealth
+    restart: always
+    network_mode: none
+    environment:
+      - LOG_LEVEL=info
+      - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
+      - TZ=${TZ}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   arrnetwork:
