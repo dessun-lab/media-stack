@@ -165,6 +165,23 @@ services:
       arrnetwork:
         ipv4_address: 172.18.0.5
 
+  jellyseerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: jellyseerr
+    restart: unless-stopped
+    ports:
+      - "${JELLYSEERR_HOST}:5055:5055"
+    environment:
+      - TZ=${TZ}
+      - LOG_LEVEL=info
+      - PUID=${PUID}
+      - PGID=${PGID}
+    volumes:
+      - /home/devops/runtime/arrstack/jellyseerr:/app/config
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.7
+
 networks:
   arrnetwork:
     name: arrnet_managed
