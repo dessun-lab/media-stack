@@ -14,8 +14,8 @@ services:
     devices:
       - /dev/dri:/dev/dri
     group_add:
-      - "video"
-      - "render"
+      - "${GID_VIDEO:-44}"
+      - "${GID_RENDER:-993}"
     volumes:
       - /home/devops/runtime/jellyfin/config:/config
       - /data/media:/data
