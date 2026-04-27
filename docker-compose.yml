@@ -11,9 +11,15 @@ services:
       - PGID=${PGID}
       - UMASK=002
       - TZ=${TZ}
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "video"
+      - "render"
     volumes:
       - /home/devops/runtime/jellyfin/config:/config
       - /data/media:/data
+      - /home/devops/runtime/jellyfin/cache:/cache
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.2
