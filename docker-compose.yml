@@ -170,6 +170,7 @@ services:
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.5
+        
 
   jellyseerr:
     image: ghcr.io/seerr-team/seerr:latest
@@ -187,6 +188,63 @@ services:
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.7
+
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    user: "${PUID}:${PGID}"
+    restart: unless-stopped
+    ports:
+      - "${NAVIDROME_HOST}:4533:4533"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - ND_MUSICFOLDER=/music
+      - ND_DATAFOLDER=/data
+      - ND_LOGLEVEL=info
+      - ND_PORT=4533
+      - ND_ADDRESS=0.0.0.0
+      - ND_SCANNER_SCHEDULE=1h
+      - ND_SCANNER_WATCHERWAIT=1m
+      - ND_ENABLETRANSCODINGCONFIG=true
+      - ND_DEFAULTTHEME=Dark
+      - ND_ENABLESHARING=true
+      - ND_ENABLEDOWNLOADS=true
+      - ND_FFMPEGPATH=/usr/bin/ffmpeg
+      - ND_TRANSCODINGCACHESIZE=500MB
+      - ND_DEFAULTDOWNSAMPLINGFORMAT=opus
+      - ND_ENABLEARTWORKPRECACHE=true
+      - ND_COVERARTQUALITY=85
+      - ND_ENABLEEXTERNALSERVICES=true
+      - ND_ENABLELOGREDACTING=true
+      - ND_SESSIONTIMEOUT=72h
+      - ND_PROMETHEUS_ENABLED=true
+      - ND_PROMETHEUS_METRICSPATH=/metrics
+    volumes:
+      - "/home/devops/runtime/arrstack/navidrome:/data"
+      - "/data/music:/music:ro"
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.8
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    restart: unless-stopped
+    ports:
+      - "${LIDARR_HOST}:8686:8686"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+    volumes:
+      - /home/devops/runtime/arrstack/lidarr:/config
+      - /data:/data
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.9
 
 networks:
   arrnetwork:
