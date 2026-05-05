@@ -246,7 +246,7 @@ services:
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.9
-        
+
   ytdlp:
     image: ytdlp:latest
     container_name: ytdlp
@@ -257,7 +257,7 @@ services:
     volumes:
       - /data/music:/music
       - /data/downloads:/downloads
-      - /home/devops/infra/arrstack/yt-dlp/cookies.txt:/cookies.txt:ro
+      - /home/devops/infra/arrstack/yt-dlp/cookies.txt:/cookies.txt
     stdin_open: true
     tty: true
     entrypoint: ["sh", "-c"]
