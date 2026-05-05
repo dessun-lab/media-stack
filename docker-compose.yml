@@ -241,7 +241,7 @@ services:
       - TZ=${TZ}
     volumes:
       - /home/devops/runtime/arrstack/lidarr:/config
-      - /data:/data
+      - /data/music:/data
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.9
