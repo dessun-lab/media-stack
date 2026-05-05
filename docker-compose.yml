@@ -246,7 +246,7 @@ services:
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.9
-
+        
   ytdlp:
     image: ytdlp:latest
     container_name: ytdlp
@@ -260,7 +260,9 @@ services:
       - /home/devops/infra/arrstack/yt-dlp/cookies.txt:/cookies.txt:ro
     stdin_open: true
     tty: true
-    command: tail -f /dev/null
+    entrypoint: ["sh", "-c"]
+    command: "tail -f /dev/null"
+    restart: unless-stopped
 
 networks:
   arrnetwork:
