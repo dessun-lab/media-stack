@@ -242,6 +242,7 @@ services:
     volumes:
       - /home/devops/runtime/arrstack/lidarr:/config
       - /data/music:/data
+      - /data/downloads:/downloads
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.9
