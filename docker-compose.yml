@@ -246,6 +246,17 @@ services:
       arrnetwork:
         ipv4_address: 172.18.0.9
 
+  ytdlp:
+    image: ghcr.io/yt-dlp/yt-dlp
+    container_name: ytdlp
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    volumes:
+      - /data/music:/music
+      - /data/downloads:/downloads
+
 networks:
   arrnetwork:
     name: arrnet_managed
