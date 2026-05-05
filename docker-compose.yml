@@ -247,7 +247,7 @@ services:
         ipv4_address: 172.18.0.9
 
   ytdlp:
-    image: ghcr.io/yt-dlp/yt-dlp
+    image: ytdlp:latest
     container_name: ytdlp
     network_mode: service:gluetun
     depends_on:
