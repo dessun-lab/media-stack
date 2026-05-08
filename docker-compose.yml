@@ -74,10 +74,10 @@ services:
       - UMASK=002
       - TZ=${TZ}
       - WEBUI_PORT=${QBITTORRENT_WEBUI_PORT_INTERNAL:-8080}
-      - DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest
+      # - DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest
     volumes:
       - /home/devops/runtime/arrstack/qbittorrent:/config
-      # - /home/devops/infra/arrstack/vuetorrent/public:/config/vuetorrent
+      - /home/devops/infra/arrstack/vuetorrent:/vuetorrent
       - /data/media:/data
     
   # ============================================================
