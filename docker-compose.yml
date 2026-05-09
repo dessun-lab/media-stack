@@ -36,6 +36,7 @@ services:
     ports:
       - "${GLUETUN_HOST}:8081:8080"   # qBittorrent WebUI
       - "${GLUETUN_HOST}:9696:9696"   # Prowlarr WebUI
+      - "${GLUETUN_HOST}:7681:7681"   # cli API (for themearr)
     cap_add:
       - NET_ADMIN
     devices:
@@ -265,6 +266,20 @@ services:
     entrypoint: ["sh", "-c"]
     command: "tail -f /dev/null"
     restart: unless-stopped
+
+  themearr:
+    image: themearr:latest
+    container_name: themearr
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - /data/media/anime-themes:/data
 
 networks:
   arrnetwork:
