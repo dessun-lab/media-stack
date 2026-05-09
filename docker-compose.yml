@@ -259,7 +259,7 @@ services:
         condition: service_healthy
     volumes:
       - /data/music:/music
-      - /data/downloads:/downloads
+      - /data/media/downloads:/downloads
       - /home/devops/infra/arrstack/yt-dlp/cookies.txt:/cookies.txt
     stdin_open: true
     tty: true
@@ -278,8 +278,10 @@ services:
         restart: true
     environment:
       - TZ=${TZ}
+      - ANIMETHEMES_OUTPUT_DIR=/data/anime
+      - ANIMETHEMES_API_URL=${ANIMETHEMES_API_URL:-http://api.animethemes.moe}
     volumes:
-      - /data/media/anime-themes:/data
+      - /data/media/AnimeThemes:/data/anime
 
 networks:
   arrnetwork:
