@@ -6,7 +6,7 @@ services:
     restart: unless-stopped
     ports:
       - "${JELLYFIN_HOST}:8096:8096"
-      - "${JELLYFIN_LOCAL_HOST}:8920:8920"
+      - "${JELLYFIN_LOCAL_HOST}:8096:8096"
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
