@@ -19,7 +19,8 @@ services:
       - "${GID_RENDER:-993}"
     volumes:
       - /home/devops/runtime/jellyfin/config:/config
-      - /data/media:/data
+      - /data/media:/data/media
+      - /data/fast:/data/fast
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.2
