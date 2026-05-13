@@ -20,7 +20,6 @@ services:
     volumes:
       - /home/devops/runtime/jellyfin/config:/config
       - /data/media:/data
-      - /home/devops/runtime/jellyfin/cache:/cache
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.2
@@ -79,8 +78,10 @@ services:
       - DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest
     volumes:
       - /home/devops/runtime/arrstack/qbittorrent:/config
-      # - /home/devops/infra/arrstack/vuetorrent:/vuetorrent
-      - /data/media:/data
+      - /home/devops/runtime/arrstack/qbittorrent/downloads:/downloads
+      - /home/devops/runtime/arrstack/qbittorrent/incomplete:/incomplete
+      - /home/devops/runtime/arrstack/qbittorrent/temp:/temp
+      - /home/devops/runtime/arrstack/qbittorrent/watch:/watch
     
   # ============================================================
   # DEUNHEALTH — Auto-restarts unhealthy containers
@@ -148,7 +149,8 @@ services:
       - TZ=${TZ}
     volumes:
       - /home/devops/runtime/arrstack/radarr:/config
-      - /data/media:/data
+      - /home/devops/runtime/arrstack/radarr/movies:/movies
+      - /home/devops/runtime/arrstack/radarr/downloads:/downloads
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.4
@@ -170,7 +172,8 @@ services:
       - TZ=${TZ}
     volumes:
       - /home/devops/runtime/arrstack/sonarr:/config
-      - /data/media:/data
+      - /home/devops/runtime/arrstack/sonarr/tv:/tv
+      - /home/devops/runtime/arrstack/sonarr/downloads:/downloads
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.5
@@ -227,7 +230,8 @@ services:
       - ND_PROMETHEUS_METRICSPATH=/metrics
     volumes:
       - "/home/devops/runtime/arrstack/navidrome:/data"
-      - "/data/music:/music:ro"
+      - "/home/devops/infra/arrstack/navidrome/music:/music:ro"
+      - "/home/devops/infra/arrstack/navidrome/downloads:/downloads:ro"
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.8
@@ -245,8 +249,8 @@ services:
       - TZ=${TZ}
     volumes:
       - /home/devops/runtime/arrstack/lidarr:/config
-      - /data/music:/data
-      - /data/media/downloads:/downloads
+      - /home/devops/runtime/arrstack/lidarr/music:/music
+      - /home/devops/runtime/arrstack/lidarr/downloads:/downloads
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.9
@@ -259,8 +263,8 @@ services:
       gluetun:
         condition: service_healthy
     volumes:
-      - /data/music:/music
-      - /data/media/downloads:/downloads
+      - /home/devops/runtime/arrstack/ytdlp/music:/music
+      - /home/devops/runtime/arrstack/ytdlp/downloads:/downloads
       - /home/devops/infra/arrstack/yt-dlp/cookies.txt:/cookies.txt
     stdin_open: true
     tty: true
@@ -282,7 +286,7 @@ services:
       - ANIMETHEMES_OUTPUT_DIR=/data/anime
       - ANIMETHEMES_API_URL=${ANIMETHEMES_API_URL:-http://api.animethemes.moe}
     volumes:
-      - /data/media/AnimeThemes:/data/anime
+      - /home/devops/runtime/arrstack/themearr/AnimeThemes:/data/anime
 
 networks:
   arrnetwork:
