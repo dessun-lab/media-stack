@@ -19,6 +19,7 @@ services:
       - "${GID_RENDER:-993}"
     volumes:
       - /home/devops/runtime/jellyfin/config:/config
+      - /data/fast/jellyfin/cache:/config/cache
       - /data/media:/data/media
       - /data/fast:/data/fast
     networks:
