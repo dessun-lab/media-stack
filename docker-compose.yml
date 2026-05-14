@@ -20,8 +20,9 @@ services:
     volumes:
       - /home/devops/runtime/jellyfin/config:/config
       - /data/fast/jellyfin/cache:/config/cache
+      - /data/fast/jellyfin/transcode:/config/data/transcode
+      - /data/fast/jellyfin/metadata:/config/data/metadata
       - /data/media:/data/media
-      - /data/fast:/data/fast
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.2
@@ -233,9 +234,6 @@ services:
     volumes:
       - "/home/devops/runtime/arrstack/navidrome:/data"
       - "/home/devops/infra/arrstack/navidrome/music:/music:ro"
-      - "/home/devops/infra/arrstack/navidrome/downloads:/downloads:ro"
-      - "/data/fast/navidrome/:/data/fast/navidrome"
-      - "/data/media/music:/data/media/music:ro"
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.8
@@ -255,8 +253,6 @@ services:
       - /home/devops/runtime/arrstack/lidarr:/config
       - /home/devops/runtime/arrstack/lidarr/music:/music
       - /home/devops/runtime/arrstack/lidarr/downloads:/downloads
-      - "/data/fast/navidrome/:/data/fast/navidrome"
-      - "/data/media/music:/data/media/music"
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.9
