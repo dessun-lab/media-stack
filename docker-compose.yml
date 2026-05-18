@@ -81,8 +81,7 @@ services:
       - DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest
     volumes:
       - /home/devops/runtime/arrstack/qbittorrent:/config
-      - /data/fast/qbittorrent/downloads:/downloads
-      - /data/fast/qbittorrent/incomplete:/incomplete
+      - /data/fast/qbittorrent:/data
       - /home/devops/runtime/arrstack/qbittorrent/temp:/temp
       - /home/devops/runtime/arrstack/qbittorrent/watch:/watch
     
