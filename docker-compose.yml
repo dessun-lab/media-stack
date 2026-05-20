@@ -152,7 +152,7 @@ services:
     volumes:
       - /home/devops/runtime/arrstack/radarr:/config
       - /home/devops/runtime/arrstack/radarr/movies:/movies
-      - /home/devops/runtime/arrstack/radarr/downloads:/downloads
+      - /home/devops/runtime/arrstack/radarr/downloads:/data/downloads
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.4
@@ -175,7 +175,7 @@ services:
     volumes:
       - /home/devops/runtime/arrstack/sonarr:/config
       - /home/devops/runtime/arrstack/sonarr/tv:/tv
-      - /home/devops/runtime/arrstack/sonarr/downloads:/downloads
+      - /home/devops/runtime/arrstack/sonarr/downloads:/data/downloads
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.5
