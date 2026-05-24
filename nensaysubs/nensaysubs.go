@@ -1488,21 +1488,29 @@ func moveAndRenameSubtitles(subsDir string, videosBaseDir string) (int, int, err
 		return 0, 0, err
 	}
 
+	if len(srtFiles) == 0 {
+		return 0, 0, fmt.Errorf("no se encontraron archivos .srt en %s", subsDir)
+	}
+
 	sort.Strings(srtFiles)
 
 	moved := 0
 	skipped := 0
 	for _, srt := range srtFiles {
-		ep, ok := extractEpisodeNumber(filepath.Base(srt))
+		season, ep, ok := extractEpisodeRef(filepath.Base(srt))
 		if !ok {
 			fmt.Printf("[!] No pude detectar episodio para: %s\n", filepath.Base(srt))
 			skipped++
 			continue
 		}
 
-		video, err := findVideoByEpisode(videosBaseDir, ep)
+		video, err := findVideoByEpisode(videosBaseDir, season, ep)
 		if err != nil {
-			fmt.Printf("[!] No MKV encontrado para episodio %02d (%s)\n", ep, filepath.Base(srt))
+			if season >= 0 {
+				fmt.Printf("[!] No video encontrado para S%02dE%02d (%s)\n", season, ep, filepath.Base(srt))
+			} else {
+				fmt.Printf("[!] No video encontrado para episodio %02d (%s)\n", ep, filepath.Base(srt))
+			}
 			skipped++
 			continue
 		}
@@ -1527,7 +1535,16 @@ func moveAndRenameSubtitles(subsDir string, videosBaseDir string) (int, int, err
 	return moved, skipped, nil
 }
 
-func extractEpisodeNumber(name string) (int, bool) {
+func extractEpisodeRef(name string) (int, int, bool) {
+	reSE := regexp.MustCompile(`(?i)s\s*([0-9]{1,2})\s*e\s*([0-9]{1,3})`)
+	if m := reSE.FindStringSubmatch(name); len(m) >= 3 {
+		s, errS := strconv.Atoi(m[1])
+		e, errE := strconv.Atoi(m[2])
+		if errS == nil && errE == nil && e > 0 {
+			return s, e, true
+		}
+	}
+
 	rePatterns := []*regexp.Regexp{
 		regexp.MustCompile(`(?i)sub\D*([0-9]{1,3})`),
 		regexp.MustCompile(`(?i)(?:episodio|ep|e)\D*([0-9]{1,3})`),
@@ -1538,7 +1555,7 @@ func extractEpisodeNumber(name string) (int, bool) {
 		if len(m) >= 2 {
 			n, err := strconv.Atoi(m[1])
 			if err == nil && n > 0 {
-				return n, true
+				return -1, n, true
 			}
 		}
 	}
@@ -1546,17 +1563,25 @@ func extractEpisodeNumber(name string) (int, bool) {
 	allNums := regexp.MustCompile(`([0-9]{1,3})`).FindAllStringSubmatch(name, -1)
 	for i := len(allNums) - 1; i >= 0; i-- {
 		n, err := strconv.Atoi(allNums[i][1])
-		if err == nil && n > 0 && n < 1000 {
-			return n, true
+		if err == nil && n > 0 && n < 400 {
+			// Avoid common resolution/year noise when guessing from plain numbers.
+			if n == 720 || n == 1080 || n == 2160 {
+				continue
+			}
+			return -1, n, true
 		}
 	}
 
-	return 0, false
+	return -1, 0, false
 }
 
-func findVideoByEpisode(baseDir string, ep int) (string, error) {
+func findVideoByEpisode(baseDir string, season int, ep int) (string, error) {
 	ep2 := fmt.Sprintf("e%02d", ep)
 	ep3 := fmt.Sprintf("e%03d", ep)
+	se := ""
+	if season >= 0 {
+		se = fmt.Sprintf("s%02de%02d", season, ep)
+	}
 
 	var matches []string
 	err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
@@ -1568,6 +1593,10 @@ func findVideoByEpisode(baseDir string, ep int) (string, error) {
 			return nil
 		}
 		name := strings.ToLower(filepath.Base(path))
+		if se != "" && strings.Contains(name, se) {
+			matches = append(matches, path)
+			return nil
+		}
 		if strings.Contains(name, ep2) || strings.Contains(name, ep3) {
 			matches = append(matches, path)
 		}
