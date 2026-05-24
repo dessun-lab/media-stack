@@ -303,10 +303,32 @@ services:
     environment:
       - TZ=${TZ}
       - NENSAYSUBS_OUTPUT_DIR=/data/media/subs
+      - NENSAYSUBS_EPISODE_BASE_DIR=/data/media
+      - NENSAYSUBS_FLARESOLVERR_URL=http://flaresolverr:8191/v1
       - NENSAYSUBS_INTERACTIVE=true
     volumes:
       - /home/devops/runtime/arrstack/nensaysubs:/runtime
       - /data/media:/data/media
+
+  subtitleedit:
+    image: lscr.io/linuxserver/webtop:ubuntu-kde
+    container_name: subtitleedit
+    restart: unless-stopped
+    shm_size: "2gb"
+    security_opt:
+      - seccomp:unconfined
+    ports:
+      - "${SUBTITLEEDIT_HOST}:3003:3000"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /data/media:/data/media
+      - /home/devops/runtime/arrstack/subtitleedit:/config
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.10
 
 networks:
   arrnetwork:
