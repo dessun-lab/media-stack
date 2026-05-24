@@ -39,8 +39,10 @@ const (
 
 const captchaPreviewWidth = 80
 const maxHTTPRetries = 3
+const flareSolverrTimeout = 120000
 
 var runtimeUserAgent = UserAgent
+var runtimeFlareSession = ""
 
 type episode struct {
 	name  string
@@ -122,6 +124,14 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 		return http.ErrUseLastResponse
 	}
+
+	defer func() {
+		if runtimeFlareSession != "" {
+			if err := destroyFlareSolverrSession(client); err != nil {
+				fmt.Printf("[DEBUG] No se pudo cerrar sesión FlareSolverr: %v\n", err)
+			}
+		}
+	}()
 
 	fmt.Println("[DEBUG] HTTP transport mode: h1-only (HTTP/2 disabled for VPN stability)")
 
@@ -1631,6 +1641,7 @@ type flareSolverrRequest struct {
 	Cmd        string `json:"cmd"`
 	URL        string `json:"url"`
 	MaxTimeout int    `json:"maxTimeout"`
+	Session    string `json:"session,omitempty"`
 }
 
 type flareSolverrCookie struct {
@@ -1645,6 +1656,7 @@ type flareSolverrCookie struct {
 type flareSolverrResponse struct {
 	Status   string `json:"status"`
 	Message  string `json:"message"`
+	Session  string `json:"session"`
 	Solution struct {
 		URL       string               `json:"url"`
 		Status    int                  `json:"status"`
@@ -1668,86 +1680,172 @@ func isIngresoGatePage(body string) bool {
 }
 
 func solveWithFlareSolverr(client *http.Client, targetURL string) (string, error) {
+	fsURL := getFlareSolverrURL()
+
+	for attempt := 1; attempt <= 2; attempt++ {
+		session, err := ensureFlareSolverrSession(client)
+		if err != nil {
+			return "", err
+		}
+
+		payload := flareSolverrRequest{
+			Cmd:        "request.get",
+			URL:        targetURL,
+			MaxTimeout: flareSolverrTimeout,
+			Session:    session,
+		}
+
+		fsResp, rawBody, err := callFlareSolverr(client, fsURL, payload)
+		if err != nil {
+			return "", err
+		}
+
+		if strings.ToLower(fsResp.Status) != "ok" {
+			msg := fsResp.Message
+			if msg == "" {
+				msg = string(rawBody)
+			}
+			low := strings.ToLower(msg)
+			if strings.Contains(low, "session") && strings.Contains(low, "not") && attempt < 2 {
+				runtimeFlareSession = ""
+				continue
+			}
+			return "", fmt.Errorf("flaresolverr status=%s: %s", fsResp.Status, msg)
+		}
+
+		if fsResp.Solution.UserAgent != "" {
+			runtimeUserAgent = fsResp.Solution.UserAgent
+		}
+
+		targetParsed, err := url.Parse(targetURL)
+		if err != nil {
+			return "", err
+		}
+
+		set := make([]*http.Cookie, 0, len(fsResp.Solution.Cookies))
+		for _, c := range fsResp.Solution.Cookies {
+			if c.Name == "" {
+				continue
+			}
+			path := c.Path
+			if path == "" {
+				path = "/"
+			}
+			set = append(set, &http.Cookie{
+				Name:     c.Name,
+				Value:    c.Value,
+				Path:     path,
+				Domain:   c.Domain,
+				HttpOnly: c.HTTPOnly,
+				Secure:   c.Secure,
+			})
+		}
+
+		if len(set) > 0 {
+			client.Jar.SetCookies(targetParsed, set)
+		}
+
+		fmt.Printf("[+] FlareSolverr OK. Session=%s Cookies importadas: %d\n", runtimeFlareSession, len(set))
+		return fsResp.Solution.Response, nil
+	}
+
+	return "", fmt.Errorf("flaresolverr no pudo resolver request.get")
+}
+
+func getFlareSolverrURL() string {
 	fsURL := strings.TrimSpace(os.Getenv("NENSAYSUBS_FLARESOLVERR_URL"))
 	if fsURL == "" {
 		fsURL = "http://flaresolverr:8191/v1"
 	}
+	return fsURL
+}
 
-	payload := flareSolverrRequest{
-		Cmd:        "request.get",
-		URL:        targetURL,
-		MaxTimeout: 120000,
-	}
+func callFlareSolverr(client *http.Client, fsURL string, payload flareSolverrRequest) (flareSolverrResponse, []byte, error) {
+	var zero flareSolverrResponse
 
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return zero, nil, err
 	}
 
 	req, err := http.NewRequest("POST", fsURL, bytes.NewReader(data))
 	if err != nil {
-		return "", err
+		return zero, nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", runtimeUserAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return zero, nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return zero, nil, err
 	}
 
 	var fsResp flareSolverrResponse
 	if err := json.Unmarshal(body, &fsResp); err != nil {
-		return "", fmt.Errorf("respuesta de FlareSolverr inválida: %w", err)
+		return zero, body, fmt.Errorf("respuesta de FlareSolverr inválida: %w", err)
 	}
 
-	if strings.ToLower(fsResp.Status) != "ok" {
-		if fsResp.Message == "" {
-			fsResp.Message = string(body)
-		}
-		return "", fmt.Errorf("flaresolverr status=%s: %s", fsResp.Status, fsResp.Message)
+	return fsResp, body, nil
+}
+
+func ensureFlareSolverrSession(client *http.Client) (string, error) {
+	if runtimeFlareSession != "" {
+		return runtimeFlareSession, nil
 	}
 
-	if fsResp.Solution.UserAgent != "" {
-		runtimeUserAgent = fsResp.Solution.UserAgent
-	}
-
-	targetParsed, err := url.Parse(targetURL)
+	fsURL := getFlareSolverrURL()
+	payload := flareSolverrRequest{Cmd: "sessions.create", MaxTimeout: flareSolverrTimeout}
+	fsResp, rawBody, err := callFlareSolverr(client, fsURL, payload)
 	if err != nil {
 		return "", err
 	}
 
-	set := make([]*http.Cookie, 0, len(fsResp.Solution.Cookies))
-	for _, c := range fsResp.Solution.Cookies {
-		if c.Name == "" {
-			continue
+	if strings.ToLower(fsResp.Status) != "ok" {
+		msg := fsResp.Message
+		if msg == "" {
+			msg = string(rawBody)
 		}
-		path := c.Path
-		if path == "" {
-			path = "/"
-		}
-		set = append(set, &http.Cookie{
-			Name:     c.Name,
-			Value:    c.Value,
-			Path:     path,
-			Domain:   c.Domain,
-			HttpOnly: c.HTTPOnly,
-			Secure:   c.Secure,
-		})
+		return "", fmt.Errorf("sessions.create fallo: %s", msg)
 	}
 
-	if len(set) > 0 {
-		client.Jar.SetCookies(targetParsed, set)
+	if strings.TrimSpace(fsResp.Session) == "" {
+		return "", fmt.Errorf("sessions.create sin session id")
 	}
 
-	fmt.Printf("[+] FlareSolverr OK. Cookies importadas: %d\n", len(set))
-	return fsResp.Solution.Response, nil
+	runtimeFlareSession = fsResp.Session
+	fmt.Printf("[DEBUG] FlareSolverr session creada: %s\n", runtimeFlareSession)
+	return runtimeFlareSession, nil
+}
+
+func destroyFlareSolverrSession(client *http.Client) error {
+	if runtimeFlareSession == "" {
+		return nil
+	}
+
+	fsURL := getFlareSolverrURL()
+	payload := flareSolverrRequest{Cmd: "sessions.destroy", Session: runtimeFlareSession, MaxTimeout: flareSolverrTimeout}
+	fsResp, rawBody, err := callFlareSolverr(client, fsURL, payload)
+	if err != nil {
+		return err
+	}
+
+	if strings.ToLower(fsResp.Status) != "ok" {
+		msg := fsResp.Message
+		if msg == "" {
+			msg = string(rawBody)
+		}
+		return fmt.Errorf("sessions.destroy fallo: %s", msg)
+	}
+
+	fmt.Printf("[DEBUG] FlareSolverr session cerrada: %s\n", runtimeFlareSession)
+	runtimeFlareSession = ""
+	return nil
 }
 
 func doGetWithRetry(client *http.Client, rawURL string, referer string) (*http.Response, error) {
