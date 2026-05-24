@@ -105,6 +105,14 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 		}
 	}()
 
+	defer func() {
+		if cleanErr := cleanupSubsWorkspace("/data/media/subs"); cleanErr != nil {
+			fmt.Printf("[!] Limpieza final fallo en /data/media/subs: %v\n", cleanErr)
+		} else {
+			fmt.Println("[+] Limpieza final completada: /data/media/subs vacio")
+		}
+	}()
+
 	if strings.TrimSpace(series) == "" {
 		return fmt.Errorf("series is required")
 	}
@@ -460,8 +468,6 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 			fmt.Printf("[DEBUG] ZIP anidados extraidos tras descarga: %d\n", nestedCount)
 		}
 
-		convertDirToSRT(destination)
-
 		downloadedCount++
 		fmt.Println("[+] Episodio completado.")
 	}
@@ -490,7 +496,6 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 			fmt.Printf("[DEBUG] No se pudieron procesar ZIP pendientes en %s: %v\n", destination, zipErr)
 		} else if extractedZipCount > 0 {
 			fmt.Printf("[DEBUG] ZIP pendientes extraidos antes del post-proceso: %d\n", extractedZipCount)
-			convertDirToSRT(destination)
 		}
 
 		srtCount, assCount, ssaCount, scanErr := scanSubtitleCounts(destination)
@@ -498,20 +503,11 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 			fmt.Printf("[DEBUG] No se pudo escanear subtitulos en %s: %v\n", destination, scanErr)
 		} else {
 			fmt.Printf("[DEBUG] Pre post-proceso en %s: .srt=%d .ass=%d .ssa=%d\n", destination, srtCount, assCount, ssaCount)
-			if srtCount == 0 && (assCount > 0 || ssaCount > 0) {
-				fmt.Println("[DEBUG] No hay .srt pero si hay ASS/SSA; ejecutando conversion final de seguridad...")
-				convertDirToSRT(destination)
-			}
 		}
 
 		finalSrtCount, finalAssCount, finalSsaCount, finalScanErr := scanSubtitleCounts(destination)
-		if finalScanErr == nil && (finalAssCount > 0 || finalSsaCount > 0) {
-			fmt.Printf("[DEBUG] Convirtiendo pendientes antes de mover: .ass=%d .ssa=%d\n", finalAssCount, finalSsaCount)
-			convertDirToSRT(destination)
-			finalSrtCount, finalAssCount, finalSsaCount, _ = scanSubtitleCounts(destination)
-		}
 		if finalScanErr == nil {
-			fmt.Printf("[DEBUG] Subtitulos finales listos para mover: .srt=%d .ass=%d .ssa=%d\n", finalSrtCount, finalAssCount, finalSsaCount)
+			fmt.Printf("[DEBUG] Subtitulos detectados para mover: .srt=%d .ass=%d .ssa=%d\n", finalSrtCount, finalAssCount, finalSsaCount)
 		}
 
 		manualRequested := false
@@ -1723,23 +1719,23 @@ func browseMediaPathInteractive(start string, allowVideoSelection bool) (string,
 }
 
 func moveAndRenameSubtitles(subsDir string, videosBaseDir string) (int, int, error) {
-	srtFiles, err := listSubtitleFiles(subsDir)
+	subFiles, err := listSubtitleFiles(subsDir)
 	if err != nil {
 		return 0, 0, err
 	}
 
-	if len(srtFiles) == 0 {
-		return 0, 0, fmt.Errorf("no se encontraron archivos .srt en %s", subsDir)
+	if len(subFiles) == 0 {
+		return 0, 0, fmt.Errorf("no se encontraron subtitulos en %s", subsDir)
 	}
 
-	sort.Strings(srtFiles)
+	sort.Strings(subFiles)
 
 	moved := 0
 	skipped := 0
-	for _, srt := range srtFiles {
-		season, ep, ok := extractEpisodeRef(filepath.Base(srt))
+	for _, sub := range subFiles {
+		season, ep, ok := extractEpisodeRef(filepath.Base(sub))
 		if !ok {
-			fmt.Printf("[!] No pude detectar episodio para: %s\n", filepath.Base(srt))
+			fmt.Printf("[!] No pude detectar episodio para: %s\n", filepath.Base(sub))
 			skipped++
 			continue
 		}
@@ -1747,28 +1743,21 @@ func moveAndRenameSubtitles(subsDir string, videosBaseDir string) (int, int, err
 		video, err := findVideoByEpisode(videosBaseDir, season, ep)
 		if err != nil {
 			if season >= 0 {
-				fmt.Printf("[!] No video encontrado para S%02dE%02d (%s)\n", season, ep, filepath.Base(srt))
+				fmt.Printf("[!] No video encontrado para S%02dE%02d (%s)\n", season, ep, filepath.Base(sub))
 			} else {
-				fmt.Printf("[!] No video encontrado para episodio %02d (%s)\n", ep, filepath.Base(srt))
+				fmt.Printf("[!] No video encontrado para episodio %02d (%s)\n", ep, filepath.Base(sub))
 			}
 			skipped++
 			continue
 		}
 
-		target := strings.TrimSuffix(video, filepath.Ext(video)) + ".spa.srt"
-		if _, err := os.Stat(target); err == nil {
-			fmt.Printf("[!] Ya existe target, omitido: %s\n", target)
+		if err := placeSubtitleForVideo(sub, video, "spa", false, false); err != nil {
+			fmt.Printf("[!] Error moviendo/procesando %s: %v\n", filepath.Base(sub), err)
 			skipped++
 			continue
 		}
 
-		if err := moveFile(srt, target); err != nil {
-			fmt.Printf("[!] Error moviendo %s -> %s: %v\n", srt, target, err)
-			skipped++
-			continue
-		}
-
-		fmt.Printf("[+] Movido: %s -> %s\n", filepath.Base(srt), target)
+		fmt.Printf("[+] Procesado: %s\n", filepath.Base(sub))
 		moved++
 	}
 
@@ -1785,7 +1774,7 @@ func listSubtitleFiles(subsDir string) ([]string, error) {
 		if info.IsDir() {
 			return nil
 		}
-		if strings.EqualFold(filepath.Ext(path), ".srt") {
+		if isSubtitleFile(path) {
 			srtFiles = append(srtFiles, path)
 		}
 		return nil
@@ -1854,6 +1843,92 @@ func isVideoFile(path string) bool {
 	return ext == ".mkv" || ext == ".mp4" || ext == ".avi"
 }
 
+func isSubtitleFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".srt" || ext == ".ass" || ext == ".ssa"
+}
+
+func buildSubtitleTargets(videoPath string, langTag string, sourcePath string) (string, string, bool, error) {
+	ext := strings.ToLower(filepath.Ext(sourcePath))
+	base := strings.TrimSuffix(videoPath, filepath.Ext(videoPath))
+
+	switch ext {
+	case ".srt":
+		return base + "." + langTag + ".srt", "", false, nil
+	case ".ass", ".ssa":
+		originalTarget := base + "." + langTag + ext
+		srtTarget := base + "." + langTag + ".srt"
+		return originalTarget, srtTarget, true, nil
+	default:
+		return "", "", false, fmt.Errorf("extension de subtitulo no soportada: %s", ext)
+	}
+}
+
+func placeSubtitleForVideo(sourcePath string, videoPath string, langTag string, overwrite bool, askOverwrite bool) error {
+	originalTarget, srtTarget, needsSRT, err := buildSubtitleTargets(videoPath, langTag, sourcePath)
+	if err != nil {
+		return err
+	}
+
+	if _, err := os.Stat(originalTarget); err == nil {
+		if askOverwrite {
+			if !askYesNo("[?] Ya existe target original. Sobrescribir? (s/N): ", true) {
+				return fmt.Errorf("cancelado por usuario")
+			}
+			overwrite = true
+		} else if !overwrite {
+			return fmt.Errorf("ya existe target original: %s", originalTarget)
+		}
+	}
+
+	if err := moveFile(sourcePath, originalTarget); err != nil {
+		return fmt.Errorf("error moviendo original: %w", err)
+	}
+
+	if !needsSRT {
+		return nil
+	}
+
+	if _, err := os.Stat(srtTarget); err == nil {
+		if askOverwrite {
+			if !askYesNo("[?] Ya existe target .srt derivado. Sobrescribir? (s/N): ", true) {
+				return fmt.Errorf("cancelado por usuario")
+			}
+			overwrite = true
+		} else if !overwrite {
+			fmt.Printf("[!] Ya existe .srt derivado, se conserva sin sobrescribir: %s\n", srtTarget)
+			return nil
+		}
+	}
+
+	if err := generateSRTWithFFmpeg(originalTarget, srtTarget); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateSRTWithFFmpeg(inputPath string, outputPath string) error {
+	if _, err := exec.LookPath("ffmpeg"); err != nil {
+		return fmt.Errorf("ffmpeg no disponible en PATH")
+	}
+
+	cmd := exec.Command("ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", inputPath, outputPath)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = err.Error()
+		}
+		return fmt.Errorf("ffmpeg fallo (%s -> %s): %s", filepath.Base(inputPath), filepath.Base(outputPath), msg)
+	}
+
+	fmt.Printf("[+] SRT derivado con ffmpeg: %s\n", filepath.Base(outputPath))
+	return nil
+}
+
 func moveSubtitlesManual(subsDir string, videosBaseDir string) (int, int, error) {
 	if videosBaseDir == "" {
 		videosBaseDir = mediaRootDefault
@@ -1869,7 +1944,7 @@ func moveSubtitlesManual(subsDir string, videosBaseDir string) (int, int, error)
 		}
 
 		if len(srtFiles) == 0 {
-			fmt.Println("[+] No quedan subtitulos .srt por mover.")
+			fmt.Println("[+] No quedan subtitulos por mover.")
 			return moved, 0, nil
 		}
 
@@ -1913,16 +1988,16 @@ func moveSubtitlesManual(subsDir string, videosBaseDir string) (int, int, error)
 			tag = defaultTag
 		}
 
-		target := strings.TrimSuffix(video, filepath.Ext(video)) + "." + tag + ".srt"
+		originalTarget, srtTarget, needsSRT, tgtErr := buildSubtitleTargets(video, tag, subtitle)
+		if tgtErr != nil {
+			fmt.Printf("[!] No se pudo preparar destino: %v\n", tgtErr)
+			continue
+		}
 
 		fmt.Println("\n[+] Creare:")
-		fmt.Println(filepath.Base(target))
-
-		if _, err := os.Stat(target); err == nil {
-			if !askYesNo("[?] Ya existe un archivo con ese nombre. Sobrescribir? (s/N): ", true) {
-				fmt.Println("[!] Operacion omitida")
-				continue
-			}
+		fmt.Println(filepath.Base(originalTarget))
+		if needsSRT {
+			fmt.Println(filepath.Base(srtTarget))
 		}
 
 		if !askYesNo("Confirmar? (S/n): ", false) {
@@ -1930,14 +2005,47 @@ func moveSubtitlesManual(subsDir string, videosBaseDir string) (int, int, error)
 			continue
 		}
 
-		if err := moveFile(subtitle, target); err != nil {
-			fmt.Printf("[!] Error moviendo %s -> %s: %v\n", subtitle, target, err)
+		if err := placeSubtitleForVideo(subtitle, video, tag, false, true); err != nil {
+			fmt.Printf("[!] Error procesando %s: %v\n", subtitle, err)
 			continue
 		}
 
-		fmt.Printf("[+] Movido: %s -> %s\n", filepath.Base(subtitle), target)
+		fmt.Printf("[+] Procesado: %s\n", filepath.Base(subtitle))
 		moved++
 	}
+}
+
+func samePath(a string, b string) bool {
+	aa, errA := filepath.Abs(a)
+	bb, errB := filepath.Abs(b)
+	if errA != nil || errB != nil {
+		return filepath.Clean(a) == filepath.Clean(b)
+	}
+	return filepath.Clean(aa) == filepath.Clean(bb)
+}
+
+func cleanupSubsWorkspace(root string) error {
+	cleanRoot := filepath.Clean(root)
+	if cleanRoot != "/data/media/subs" {
+		return fmt.Errorf("ruta no permitida para limpieza: %s", cleanRoot)
+	}
+
+	entries, err := os.ReadDir(cleanRoot)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	for _, entry := range entries {
+		child := filepath.Join(cleanRoot, entry.Name())
+		if err := os.RemoveAll(child); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func extractEpisodeRef(name string) (int, int, bool) {
