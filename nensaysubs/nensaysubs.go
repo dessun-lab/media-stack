@@ -1752,23 +1752,58 @@ func solveCustomVerificationChallenge(client *http.Client, body string, pageURL 
 
 	time.Sleep(1200 * time.Millisecond)
 
-	resp, err := doGetWithRetry(client, pageURL, actionURL)
-	if err != nil {
-		return false, body, err
-	}
-	defer resp.Body.Close()
+	var lastBody string
+	var lastErr error
+	for attempt := 1; attempt <= 4; attempt++ {
+		resp, err := doGetWithRetry(client, pageURL, actionURL)
+		if err != nil {
+			lastErr = err
+			time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
+			continue
+		}
 
-	newBodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, body, err
+		newBodyBytes, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			lastErr = err
+			time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
+			continue
+		}
+
+		newBody := string(newBodyBytes)
+		lastBody = newBody
+
+		if resp.StatusCode >= 500 || isBadGatewayPage(newBody) {
+			lastErr = fmt.Errorf("status temporal tras challenge: %s", resp.Status)
+			fmt.Printf("[DEBUG] Challenge post-fetch %d/4 devolvió %s; reintentando...\n", attempt, resp.Status)
+			time.Sleep(time.Duration(attempt) * 900 * time.Millisecond)
+			continue
+		}
+
+		if isVerificationPage(newBody) {
+			lastErr = fmt.Errorf("challenge sigue activo")
+			time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
+			continue
+		}
+
+		if !looksLikeSeriesPage(newBody) {
+			lastErr = fmt.Errorf("html no parece página de serie")
+			time.Sleep(time.Duration(attempt) * 700 * time.Millisecond)
+			continue
+		}
+
+		return true, newBody, nil
 	}
 
-	newBody := string(newBodyBytes)
-	if isVerificationPage(newBody) {
-		return false, newBody, fmt.Errorf("challenge sigue activo")
+	if lastErr == nil {
+		lastErr = fmt.Errorf("no se pudo validar página final tras challenge")
 	}
 
-	return true, newBody, nil
+	if strings.TrimSpace(lastBody) != "" {
+		return false, lastBody, lastErr
+	}
+
+	return false, body, lastErr
 }
 
 func resolveChallengeAction(pageURL string, action string) string {
@@ -1940,6 +1975,26 @@ function setTimeout(cb){ if (typeof cb === "function") { cb(); } return 1; }
 	}
 
 	return &challengeSubmission{Action: action, Method: method, Fields: fields}, nil
+}
+
+func isBadGatewayPage(body string) bool {
+	b := strings.ToLower(body)
+	return strings.Contains(b, "502 bad gateway") ||
+		strings.Contains(b, "openresty") && strings.Contains(b, "bad gateway")
+}
+
+func looksLikeSeriesPage(body string) bool {
+	b := strings.ToLower(body)
+	if strings.Contains(b, "descarga('../senos/") {
+		return true
+	}
+	if strings.Contains(b, "name=\"code\"") || strings.Contains(b, "captcha") {
+		return true
+	}
+	if isIngresoGatePage(body) {
+		return true
+	}
+	return false
 }
 
 func solveWithFlareSolverr(client *http.Client, targetURL string) (string, error) {
