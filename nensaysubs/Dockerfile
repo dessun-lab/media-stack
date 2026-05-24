@@ -2,8 +2,7 @@ FROM golang:1.21-alpine
 
 RUN apk add --no-cache \
     tesseract-ocr \
-    tesseract-ocr-data \
-    tesseract-dev \
+    tesseract-ocr-data-eng \
     leptonica-dev \
     build-base \
     ca-certificates
