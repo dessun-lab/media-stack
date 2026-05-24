@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"image/color"
 	"image/png"
 	"io"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -109,16 +111,17 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 	jar, _ := cookiejar.New(nil)
 
-	client := &http.Client{
-		Jar: jar,
-		CheckRedirect: func(
-			req *http.Request,
-			via []*http.Request,
-		) error {
+	client := newHTTPClient(jar)
 
-			return http.ErrUseLastResponse
-		},
+	client.CheckRedirect = func(
+		req *http.Request,
+		via []*http.Request,
+	) error {
+
+		return http.ErrUseLastResponse
 	}
+
+	fmt.Println("[DEBUG] HTTP transport mode: h1-only (HTTP/2 disabled for VPN stability)")
 
 	fmt.Println("[+] Opening initial series page...")
 	fmt.Println(seriesURL)
@@ -1287,6 +1290,31 @@ func convertDirToSRT(dir string) {
 	})
 	if err != nil {
 		fmt.Printf("[!] Error recorriendo directorio: %v\n", err)
+	}
+}
+
+func newHTTPClient(jar http.CookieJar) *http.Client {
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   20 * time.Second,
+			KeepAlive: 20 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   15 * time.Second,
+		ResponseHeaderTimeout: 25 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
+		// Middleboxes over VPN often break h2 framing; force HTTP/1.1.
+		ForceAttemptHTTP2: false,
+		TLSNextProto:      map[string]func(string, *tls.Conn) http.RoundTripper{},
+	}
+
+	return &http.Client{
+		Jar:       jar,
+		Transport: transport,
+		Timeout:   90 * time.Second,
 	}
 }
 
