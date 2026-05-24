@@ -188,6 +188,24 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 		}
 	}
 
+	if isIngresoGatePage(body) {
+		fmt.Println("[!] Gate de ingreso detectado. Resolviendo captcha matemático...")
+		if err := solveEntryGate(client); err != nil {
+			return fmt.Errorf("no se pudo resolver gate de ingreso: %w", err)
+		}
+
+		resp3, err := doGetWithRetry(client, seriesURL, BaseURL+"/ingreso/")
+		check(err)
+		defer resp3.Body.Close()
+
+		bodyBytes3, err := io.ReadAll(resp3.Body)
+		check(err)
+		body = string(bodyBytes3)
+
+		fmt.Println("[DEBUG] Status tras resolver gate:", resp3.Status)
+		fmt.Println("[DEBUG] URL tras resolver gate:", resp3.Request.URL.String())
+	}
+
 	episodes := parseEpisodes(body)
 	if len(episodes) == 0 {
 		fmt.Println(body)
@@ -1618,6 +1636,13 @@ func isVerificationPage(body string) bool {
 	b := strings.ToLower(body)
 	return strings.Contains(b, "espere mientras se verifica su solicitud") ||
 		strings.Contains(b, "window.location.reload") && strings.Contains(b, "z0f76a1d14fd21a8fb5fd0d03e0fdc3d3cedae52f")
+}
+
+func isIngresoGatePage(body string) bool {
+	b := strings.ToLower(body)
+	return strings.Contains(b, "entrada a nensaysubs") &&
+		strings.Contains(b, "ingresa el resultado") &&
+		strings.Contains(b, "name=\"valor\"")
 }
 
 func solveWithFlareSolverr(client *http.Client, targetURL string) (string, error) {
