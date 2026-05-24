@@ -504,6 +504,16 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 			}
 		}
 
+		finalSrtCount, finalAssCount, finalSsaCount, finalScanErr := scanSubtitleCounts(destination)
+		if finalScanErr == nil && (finalAssCount > 0 || finalSsaCount > 0) {
+			fmt.Printf("[DEBUG] Convirtiendo pendientes antes de mover: .ass=%d .ssa=%d\n", finalAssCount, finalSsaCount)
+			convertDirToSRT(destination)
+			finalSrtCount, finalAssCount, finalSsaCount, _ = scanSubtitleCounts(destination)
+		}
+		if finalScanErr == nil {
+			fmt.Printf("[DEBUG] Subtitulos finales listos para mover: .srt=%d .ass=%d .ssa=%d\n", finalSrtCount, finalAssCount, finalSsaCount)
+		}
+
 		manualRequested := false
 		if interactive {
 			manualRequested = askYesNo("[?] Activar modo manual asistido para peliculas/specials/multiidioma? (s/N): ", true)
