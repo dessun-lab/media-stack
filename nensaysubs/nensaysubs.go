@@ -990,6 +990,28 @@ func solveEntryGate(
 	}
 
 	body := string(bodyBytes)
+	if isVerificationPage(body) {
+		fmt.Println("[DEBUG] Gate request cayó en anti-bot. Intentando FlareSolverr sobre /ingreso/...")
+		flareBody, fsErr := solveWithFlareSolverr(client, BaseURL+"/ingreso/")
+		if fsErr != nil {
+			return fmt.Errorf("gate bloqueado por anti-bot: %w", fsErr)
+		}
+
+		resp2, err := doGetWithRetry(client, BaseURL+"/ingreso/", BaseURL+"/")
+		if err == nil {
+			defer resp2.Body.Close()
+			body2, readErr := io.ReadAll(resp2.Body)
+			if readErr == nil {
+				body = string(body2)
+				fmt.Println("[DEBUG] Gate status tras FlareSolverr:", resp2.Status)
+			}
+		}
+
+		if isVerificationPage(body) && strings.TrimSpace(flareBody) != "" {
+			fmt.Println("[DEBUG] Gate sigue bloqueado tras re-fetch; usando HTML de FlareSolverr.")
+			body = flareBody
+		}
+	}
 
 	fmt.Println("[DEBUG] Gate status:", resp.Status)
 
