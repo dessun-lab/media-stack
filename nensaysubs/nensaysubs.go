@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -17,6 +18,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	_ "image/jpeg"
 	_ "image/png"
@@ -26,10 +28,12 @@ import (
 )
 
 const (
-	BaseURL = "https://nensaysubs.net"
+	BaseURL   = "https://nensaysubs.net"
+	UserAgent = "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0"
 )
 
 const captchaPreviewWidth = 80
+const maxHTTPRetries = 3
 
 type episode struct {
 	name  string
@@ -116,7 +120,7 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 	fmt.Println("[+] Opening initial series page...")
 	fmt.Println(seriesURL)
 
-	resp, err := client.Get(seriesURL)
+	resp, err := doGetWithRetry(client, seriesURL, "")
 	check(err)
 
 	defer resp.Body.Close()
@@ -138,7 +142,7 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 	fmt.Println("[+] Re-opening series page after auth...")
 
-	resp, err = client.Get(seriesURL)
+	resp, err = doGetWithRetry(client, seriesURL, BaseURL+"/ingreso/")
 	check(err)
 
 	defer resp.Body.Close()
@@ -188,7 +192,7 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 			)
 
 			// open captcha page fresh every attempt
-			epResp, err := client.Get(episodeURL)
+			epResp, err := doGetWithRetry(client, episodeURL, seriesURL)
 			check(err)
 
 			epBytes, err := io.ReadAll(epResp.Body)
@@ -218,7 +222,7 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 			fmt.Println("[+] Using POST field:", postField)
 
-			captchaResp, err := client.Get(BaseURL + "/senos/seguro.php")
+			captchaResp, err := doGetWithRetry(client, BaseURL+"/senos/seguro.php", episodeURL)
 			check(err)
 
 			captchaBytes, err := io.ReadAll(captchaResp.Body)
@@ -281,7 +285,7 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			req.Header.Set("Referer", episodeURL)
-			req.Header.Set("User-Agent", "Mozilla/5.0")
+			req.Header.Set("User-Agent", UserAgent)
 
 			downloadResp, err := client.Do(req)
 			check(err)
@@ -309,7 +313,7 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 				nextURL, err := baseRespURL.Parse(location)
 				check(err)
 
-				finalResp, err := client.Get(nextURL.String())
+				finalResp, err := doGetWithRetry(client, nextURL.String(), BaseURL+"/solicitud/")
 				check(err)
 
 				finalType := finalResp.Header.Get("Content-Type")
@@ -893,9 +897,7 @@ func solveEntryGate(
 	fmt.Println("[+] Solving entry gate...")
 	fmt.Println("[+] Opening gate...")
 
-	resp, err := client.Get(
-		BaseURL + "/ingreso/",
-	)
+	resp, err := doGetWithRetry(client, BaseURL+"/ingreso/", BaseURL+"/")
 
 	if err != nil {
 		return err
@@ -957,10 +959,7 @@ func solveEntryGate(
 		fmt.Sprintf("%d", result),
 	)
 
-	postResp, err := client.PostForm(
-		BaseURL+"/ingreso/index.php",
-		form,
-	)
+	postResp, err := doPostFormWithRetry(client, BaseURL+"/ingreso/index.php", form, BaseURL+"/ingreso/")
 
 	if err != nil {
 		return err
@@ -1267,6 +1266,104 @@ func convertDirToSRT(dir string) {
 	if err != nil {
 		fmt.Printf("[!] Error recorriendo directorio: %v\n", err)
 	}
+}
+
+func doGetWithRetry(client *http.Client, rawURL string, referer string) (*http.Response, error) {
+	urls := []string{rawURL}
+	if strings.HasPrefix(rawURL, "https://") {
+		urls = append(urls, "http://"+strings.TrimPrefix(rawURL, "https://"))
+	}
+
+	var lastErr error
+	for _, u := range urls {
+		for attempt := 1; attempt <= maxHTTPRetries; attempt++ {
+			req, err := http.NewRequest("GET", u, nil)
+			if err != nil {
+				return nil, err
+			}
+			setCommonHeaders(req, referer)
+
+			resp, err := client.Do(req)
+			if err == nil {
+				return resp, nil
+			}
+
+			lastErr = err
+			if !isRetryableNetErr(err) {
+				break
+			}
+
+			fmt.Printf("[DEBUG] GET retry %d/%d failed for %s: %v\n", attempt, maxHTTPRetries, u, err)
+			time.Sleep(time.Duration(attempt) * 400 * time.Millisecond)
+		}
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("request failed")
+	}
+
+	return nil, lastErr
+}
+
+func doPostFormWithRetry(client *http.Client, rawURL string, form url.Values, referer string) (*http.Response, error) {
+	body := form.Encode()
+
+	var lastErr error
+	for attempt := 1; attempt <= maxHTTPRetries; attempt++ {
+		req, err := http.NewRequest("POST", rawURL, strings.NewReader(body))
+		if err != nil {
+			return nil, err
+		}
+
+		setCommonHeaders(req, referer)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		resp, err := client.Do(req)
+		if err == nil {
+			return resp, nil
+		}
+
+		lastErr = err
+		if !isRetryableNetErr(err) {
+			break
+		}
+
+		fmt.Printf("[DEBUG] POST retry %d/%d failed for %s: %v\n", attempt, maxHTTPRetries, rawURL, err)
+		time.Sleep(time.Duration(attempt) * 400 * time.Millisecond)
+	}
+
+	if lastErr == nil {
+		lastErr = fmt.Errorf("post request failed")
+	}
+
+	return nil, lastErr
+}
+
+func setCommonHeaders(req *http.Request, referer string) {
+	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "es-MX,es;q=0.9,en-US;q=0.7,en;q=0.5")
+	req.Header.Set("Connection", "keep-alive")
+	if referer != "" {
+		req.Header.Set("Referer", referer)
+	}
+}
+
+func isRetryableNetErr(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "eof") ||
+		strings.Contains(msg, "connection reset") ||
+		strings.Contains(msg, "timeout") ||
+		strings.Contains(msg, "tls") ||
+		strings.Contains(msg, "temporary")
 }
 
 func check(err error) {
