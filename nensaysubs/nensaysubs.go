@@ -478,6 +478,25 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 	}
 
 	if baseDir != "" {
+		extractedZipCount, zipErr := extractPendingZips(destination)
+		if zipErr != nil {
+			fmt.Printf("[DEBUG] No se pudieron procesar ZIP pendientes en %s: %v\n", destination, zipErr)
+		} else if extractedZipCount > 0 {
+			fmt.Printf("[DEBUG] ZIP pendientes extraidos antes del post-proceso: %d\n", extractedZipCount)
+			convertDirToSRT(destination)
+		}
+
+		srtCount, assCount, ssaCount, scanErr := scanSubtitleCounts(destination)
+		if scanErr != nil {
+			fmt.Printf("[DEBUG] No se pudo escanear subtitulos en %s: %v\n", destination, scanErr)
+		} else {
+			fmt.Printf("[DEBUG] Pre post-proceso en %s: .srt=%d .ass=%d .ssa=%d\n", destination, srtCount, assCount, ssaCount)
+			if srtCount == 0 && (assCount > 0 || ssaCount > 0) {
+				fmt.Println("[DEBUG] No hay .srt pero si hay ASS/SSA; ejecutando conversion final de seguridad...")
+				convertDirToSRT(destination)
+			}
+		}
+
 		moved, skipped, moveErr := moveAndRenameSubtitles(destination, baseDir)
 		if moveErr != nil {
 			fmt.Printf("[!] Error moviendo subtitulos: %v\n", moveErr)
@@ -1389,6 +1408,80 @@ func convertDirToSRT(dir string) {
 	if err != nil {
 		fmt.Printf("[!] Error recorriendo directorio: %v\n", err)
 	}
+}
+
+func scanSubtitleCounts(dir string) (int, int, int, error) {
+	srtCount := 0
+	assCount := 0
+	ssaCount := 0
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+
+		switch strings.ToLower(filepath.Ext(path)) {
+		case ".srt":
+			srtCount++
+		case ".ass":
+			assCount++
+		case ".ssa":
+			ssaCount++
+		}
+
+		return nil
+	})
+
+	return srtCount, assCount, ssaCount, err
+}
+
+func extractPendingZips(dir string) (int, error) {
+	zipPaths := make([]string, 0)
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if strings.EqualFold(filepath.Ext(path), ".zip") {
+			zipPaths = append(zipPaths, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	if len(zipPaths) == 0 {
+		return 0, nil
+	}
+
+	count := 0
+	for _, zp := range zipPaths {
+		data, err := os.ReadFile(zp)
+		if err != nil {
+			fmt.Printf("[DEBUG] No se pudo leer ZIP pendiente %s: %v\n", zp, err)
+			continue
+		}
+
+		if err := unzip(data, dir); err != nil {
+			fmt.Printf("[DEBUG] No se pudo extraer ZIP pendiente %s: %v\n", zp, err)
+			continue
+		}
+
+		if err := os.Remove(zp); err != nil {
+			fmt.Printf("[DEBUG] ZIP extraido pero no se pudo borrar %s: %v\n", zp, err)
+		}
+
+		count++
+	}
+
+	return count, nil
 }
 
 func askYesNo(prompt string, defaultNo bool) bool {
