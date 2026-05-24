@@ -289,6 +289,27 @@ services:
     volumes:
       - /home/devops/runtime/arrstack/themearr/AnimeThemes:/data/anime
 
+  nensaysubs:
+    build:
+      context: ./nensaysubs
+    image: nensaysubs:latest
+    container_name: nensaysubs
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    network_mode: service:gluetun
+    environment:
+      - TZ=${TZ}
+      - NENSAYSUBS_OUTPUT_DIR=/data/media/subs
+      - NENSAYSUBS_INTERACTIVE=true
+    volumes:
+      - /home/devops/runtime/arrstack/nensaysubs:/runtime
+      - /data/media:/data/media
+
 networks:
   arrnetwork:
     name: arrnet_managed
