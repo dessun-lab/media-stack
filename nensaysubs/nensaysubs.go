@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
@@ -34,6 +35,8 @@ const (
 
 const captchaPreviewWidth = 80
 const maxHTTPRetries = 3
+
+var runtimeUserAgent = UserAgent
 
 type episode struct {
 	name  string
@@ -154,6 +157,25 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 	fmt.Println("[DEBUG] Final status:", resp.Status)
 	fmt.Println("[DEBUG] Final URL:", resp.Request.URL.String())
+
+	if isVerificationPage(body) {
+		fmt.Println("[!] Página anti-bot detectada. Intentando resolver con FlareSolverr...")
+		if err := solveWithFlareSolverr(client, seriesURL); err != nil {
+			fmt.Println(body)
+			return fmt.Errorf("anti-bot detectado y no se pudo resolver: %w", err)
+		}
+
+		resp2, err := doGetWithRetry(client, seriesURL, BaseURL+"/")
+		check(err)
+		defer resp2.Body.Close()
+
+		bodyBytes2, err := io.ReadAll(resp2.Body)
+		check(err)
+		body = string(bodyBytes2)
+
+		fmt.Println("[DEBUG] Final status tras FlareSolverr:", resp2.Status)
+		fmt.Println("[DEBUG] Final URL tras FlareSolverr:", resp2.Request.URL.String())
+	}
 
 	episodes := parseEpisodes(body)
 	if len(episodes) == 0 {
@@ -285,7 +307,7 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 			req.Header.Set("Referer", episodeURL)
-			req.Header.Set("User-Agent", UserAgent)
+			req.Header.Set("User-Agent", runtimeUserAgent)
 
 			downloadResp, err := client.Do(req)
 			check(err)
@@ -1268,6 +1290,121 @@ func convertDirToSRT(dir string) {
 	}
 }
 
+type flareSolverrRequest struct {
+	Cmd        string `json:"cmd"`
+	URL        string `json:"url"`
+	MaxTimeout int    `json:"maxTimeout"`
+}
+
+type flareSolverrCookie struct {
+	Name     string `json:"name"`
+	Value    string `json:"value"`
+	Domain   string `json:"domain"`
+	Path     string `json:"path"`
+	HTTPOnly bool   `json:"httpOnly"`
+	Secure   bool   `json:"secure"`
+}
+
+type flareSolverrResponse struct {
+	Status   string `json:"status"`
+	Message  string `json:"message"`
+	Solution struct {
+		URL       string               `json:"url"`
+		Status    int                  `json:"status"`
+		UserAgent string               `json:"userAgent"`
+		Cookies   []flareSolverrCookie `json:"cookies"`
+	} `json:"solution"`
+}
+
+func isVerificationPage(body string) bool {
+	b := strings.ToLower(body)
+	return strings.Contains(b, "espere mientras se verifica su solicitud") ||
+		strings.Contains(b, "window.location.reload") && strings.Contains(b, "z0f76a1d14fd21a8fb5fd0d03e0fdc3d3cedae52f")
+}
+
+func solveWithFlareSolverr(client *http.Client, targetURL string) error {
+	fsURL := strings.TrimSpace(os.Getenv("NENSAYSUBS_FLARESOLVERR_URL"))
+	if fsURL == "" {
+		fsURL = "http://flaresolverr:8191/v1"
+	}
+
+	payload := flareSolverrRequest{
+		Cmd:        "request.get",
+		URL:        targetURL,
+		MaxTimeout: 120000,
+	}
+
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", fsURL, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", runtimeUserAgent)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var fsResp flareSolverrResponse
+	if err := json.Unmarshal(body, &fsResp); err != nil {
+		return fmt.Errorf("respuesta de FlareSolverr inválida: %w", err)
+	}
+
+	if strings.ToLower(fsResp.Status) != "ok" {
+		if fsResp.Message == "" {
+			fsResp.Message = string(body)
+		}
+		return fmt.Errorf("flaresolverr status=%s: %s", fsResp.Status, fsResp.Message)
+	}
+
+	if fsResp.Solution.UserAgent != "" {
+		runtimeUserAgent = fsResp.Solution.UserAgent
+	}
+
+	targetParsed, err := url.Parse(targetURL)
+	if err != nil {
+		return err
+	}
+
+	set := make([]*http.Cookie, 0, len(fsResp.Solution.Cookies))
+	for _, c := range fsResp.Solution.Cookies {
+		if c.Name == "" {
+			continue
+		}
+		path := c.Path
+		if path == "" {
+			path = "/"
+		}
+		set = append(set, &http.Cookie{
+			Name:     c.Name,
+			Value:    c.Value,
+			Path:     path,
+			Domain:   c.Domain,
+			HttpOnly: c.HTTPOnly,
+			Secure:   c.Secure,
+		})
+	}
+
+	if len(set) > 0 {
+		client.Jar.SetCookies(targetParsed, set)
+	}
+
+	fmt.Printf("[+] FlareSolverr OK. Cookies importadas: %d\n", len(set))
+	return nil
+}
+
 func doGetWithRetry(client *http.Client, rawURL string, referer string) (*http.Response, error) {
 	urls := []string{rawURL}
 	if strings.HasPrefix(rawURL, "https://") {
@@ -1340,7 +1477,7 @@ func doPostFormWithRetry(client *http.Client, rawURL string, form url.Values, re
 }
 
 func setCommonHeaders(req *http.Request, referer string) {
-	req.Header.Set("User-Agent", UserAgent)
+	req.Header.Set("User-Agent", runtimeUserAgent)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "es-MX,es;q=0.9,en-US;q=0.7,en;q=0.5")
 	req.Header.Set("Connection", "keep-alive")
