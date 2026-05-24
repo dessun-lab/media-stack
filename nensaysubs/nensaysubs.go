@@ -453,6 +453,12 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 		err = unzip(zipData, destination)
 		check(err)
 
+		if nestedCount, nestedErr := extractAllPendingZips(destination, 4); nestedErr != nil {
+			fmt.Printf("[DEBUG] Error extrayendo ZIP anidados: %v\n", nestedErr)
+		} else if nestedCount > 0 {
+			fmt.Printf("[DEBUG] ZIP anidados extraidos tras descarga: %d\n", nestedCount)
+		}
+
 		convertDirToSRT(destination)
 
 		downloadedCount++
@@ -1482,6 +1488,26 @@ func extractPendingZips(dir string) (int, error) {
 	}
 
 	return count, nil
+}
+
+func extractAllPendingZips(dir string, maxRounds int) (int, error) {
+	if maxRounds < 1 {
+		maxRounds = 1
+	}
+
+	total := 0
+	for round := 1; round <= maxRounds; round++ {
+		count, err := extractPendingZips(dir)
+		if err != nil {
+			return total, err
+		}
+		if count == 0 {
+			return total, nil
+		}
+		total += count
+	}
+
+	return total, fmt.Errorf("se alcanzo maximo de rondas de extraccion (%d)", maxRounds)
 }
 
 func askYesNo(prompt string, defaultNo bool) bool {
