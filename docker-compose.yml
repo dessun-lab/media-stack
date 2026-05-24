@@ -290,8 +290,6 @@ services:
       - /home/devops/runtime/arrstack/themearr/AnimeThemes:/data/anime
 
   nensaysubs:
-    build:
-      context: ./nensaysubs
     image: nensaysubs:latest
     container_name: nensaysubs
     restart: unless-stopped
