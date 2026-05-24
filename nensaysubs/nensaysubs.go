@@ -165,7 +165,8 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 	if isVerificationPage(body) {
 		fmt.Println("[!] Página anti-bot detectada. Intentando resolver con FlareSolverr...")
-		if err := solveWithFlareSolverr(client, seriesURL); err != nil {
+		flareBody, err := solveWithFlareSolverr(client, seriesURL)
+		if err != nil {
 			fmt.Println(body)
 			return fmt.Errorf("anti-bot detectado y no se pudo resolver: %w", err)
 		}
@@ -180,6 +181,11 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 		fmt.Println("[DEBUG] Final status tras FlareSolverr:", resp2.Status)
 		fmt.Println("[DEBUG] Final URL tras FlareSolverr:", resp2.Request.URL.String())
+
+		if isVerificationPage(body) && strings.TrimSpace(flareBody) != "" {
+			fmt.Println("[DEBUG] Re-fetch aún bloqueado; usando HTML resuelto por FlareSolverr.")
+			body = flareBody
+		}
 	}
 
 	episodes := parseEpisodes(body)
@@ -1603,6 +1609,7 @@ type flareSolverrResponse struct {
 		URL       string               `json:"url"`
 		Status    int                  `json:"status"`
 		UserAgent string               `json:"userAgent"`
+		Response  string               `json:"response"`
 		Cookies   []flareSolverrCookie `json:"cookies"`
 	} `json:"solution"`
 }
@@ -1613,7 +1620,7 @@ func isVerificationPage(body string) bool {
 		strings.Contains(b, "window.location.reload") && strings.Contains(b, "z0f76a1d14fd21a8fb5fd0d03e0fdc3d3cedae52f")
 }
 
-func solveWithFlareSolverr(client *http.Client, targetURL string) error {
+func solveWithFlareSolverr(client *http.Client, targetURL string) (string, error) {
 	fsURL := strings.TrimSpace(os.Getenv("NENSAYSUBS_FLARESOLVERR_URL"))
 	if fsURL == "" {
 		fsURL = "http://flaresolverr:8191/v1"
@@ -1627,37 +1634,37 @@ func solveWithFlareSolverr(client *http.Client, targetURL string) error {
 
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	req, err := http.NewRequest("POST", fsURL, bytes.NewReader(data))
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", runtimeUserAgent)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var fsResp flareSolverrResponse
 	if err := json.Unmarshal(body, &fsResp); err != nil {
-		return fmt.Errorf("respuesta de FlareSolverr inválida: %w", err)
+		return "", fmt.Errorf("respuesta de FlareSolverr inválida: %w", err)
 	}
 
 	if strings.ToLower(fsResp.Status) != "ok" {
 		if fsResp.Message == "" {
 			fsResp.Message = string(body)
 		}
-		return fmt.Errorf("flaresolverr status=%s: %s", fsResp.Status, fsResp.Message)
+		return "", fmt.Errorf("flaresolverr status=%s: %s", fsResp.Status, fsResp.Message)
 	}
 
 	if fsResp.Solution.UserAgent != "" {
@@ -1666,7 +1673,7 @@ func solveWithFlareSolverr(client *http.Client, targetURL string) error {
 
 	targetParsed, err := url.Parse(targetURL)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	set := make([]*http.Cookie, 0, len(fsResp.Solution.Cookies))
@@ -1693,7 +1700,7 @@ func solveWithFlareSolverr(client *http.Client, targetURL string) error {
 	}
 
 	fmt.Printf("[+] FlareSolverr OK. Cookies importadas: %d\n", len(set))
-	return nil
+	return fsResp.Solution.Response, nil
 }
 
 func doGetWithRetry(client *http.Client, rawURL string, referer string) (*http.Response, error) {
