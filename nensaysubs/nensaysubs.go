@@ -28,6 +28,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/dop251/goja"
 	"github.com/otiai10/gosseract/v2"
 	"golang.org/x/image/draw"
 )
@@ -214,6 +215,18 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 		fmt.Println("[DEBUG] Status tras resolver gate:", resp3.Status)
 		fmt.Println("[DEBUG] URL tras resolver gate:", resp3.Request.URL.String())
+	}
+
+	if isVerificationPage(body) {
+		fmt.Println("[!] Challenge JS custom detectado. Intentando emulación local del navegador...")
+		solved, newBody, err := solveCustomVerificationChallenge(client, body, seriesURL)
+		if err != nil {
+			fmt.Printf("[DEBUG] Emulación challenge falló: %v\n", err)
+		}
+		if solved {
+			body = newBody
+			fmt.Println("[+] Challenge JS superado con emulación local.")
+		}
 	}
 
 	episodes := parseEpisodes(body)
@@ -1677,6 +1690,254 @@ func isIngresoGatePage(body string) bool {
 	return strings.Contains(b, "entrada a nensaysubs") &&
 		strings.Contains(b, "ingresa el resultado") &&
 		strings.Contains(b, "name=\"valor\"")
+}
+
+type challengeSubmission struct {
+	Action string
+	Method string
+	Fields map[string]string
+}
+
+func solveCustomVerificationChallenge(client *http.Client, body string, pageURL string) (bool, string, error) {
+	if !isVerificationPage(body) {
+		return false, body, nil
+	}
+
+	submission, err := extractChallengeSubmission(body)
+	if err != nil {
+		return false, body, err
+	}
+
+	if submission == nil || submission.Action == "" || len(submission.Fields) == 0 {
+		return false, body, fmt.Errorf("challenge sin payload util")
+	}
+
+	actionURL := resolveChallengeAction(pageURL, submission.Action)
+	method := strings.ToUpper(strings.TrimSpace(submission.Method))
+	if method == "" {
+		method = "GET"
+	}
+
+	form := url.Values{}
+	for k, v := range submission.Fields {
+		form.Set(k, v)
+	}
+
+	if method == "POST" {
+		resp, err := doPostFormWithRetry(client, actionURL, form, pageURL)
+		if err != nil {
+			return false, body, err
+		}
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	} else {
+		u, err := url.Parse(actionURL)
+		if err != nil {
+			return false, body, err
+		}
+		q := u.Query()
+		for k, vals := range form {
+			for _, v := range vals {
+				q.Add(k, v)
+			}
+		}
+		u.RawQuery = q.Encode()
+		resp, err := doGetWithRetry(client, u.String(), pageURL)
+		if err != nil {
+			return false, body, err
+		}
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}
+
+	time.Sleep(1200 * time.Millisecond)
+
+	resp, err := doGetWithRetry(client, pageURL, actionURL)
+	if err != nil {
+		return false, body, err
+	}
+	defer resp.Body.Close()
+
+	newBodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, body, err
+	}
+
+	newBody := string(newBodyBytes)
+	if isVerificationPage(newBody) {
+		return false, newBody, fmt.Errorf("challenge sigue activo")
+	}
+
+	return true, newBody, nil
+}
+
+func resolveChallengeAction(pageURL string, action string) string {
+	action = strings.TrimSpace(action)
+	if action == "" {
+		return pageURL
+	}
+	if strings.HasPrefix(action, "http://") || strings.HasPrefix(action, "https://") {
+		return action
+	}
+
+	base, err := url.Parse(pageURL)
+	if err != nil {
+		return BaseURL + action
+	}
+
+	ref, err := url.Parse(action)
+	if err != nil {
+		return BaseURL + action
+	}
+
+	return base.ResolveReference(ref).String()
+}
+
+func extractChallengeSubmission(body string) (*challengeSubmission, error) {
+	scripts := regexp.MustCompile(`(?is)<script[^>]*>(.*?)</script>`).FindAllStringSubmatch(body, -1)
+	if len(scripts) == 0 {
+		return nil, fmt.Errorf("challenge sin scripts")
+	}
+
+	var script string
+	for _, m := range scripts {
+		if len(m) < 2 {
+			continue
+		}
+		candidate := m[1]
+		cl := strings.ToLower(candidate)
+		if strings.Contains(cl, "hbla3o0puowl") && strings.Contains(cl, "z0f76a1d14fd21a8fb5fd0d03e0fdc3d3cedae52f") {
+			script = candidate
+			break
+		}
+	}
+
+	if strings.TrimSpace(script) == "" {
+		return nil, fmt.Errorf("script de challenge no encontrado")
+	}
+
+	vm := goja.New()
+	prelude := `
+var __challengeSubmit = null;
+function Elem(tag){
+  this.tagName = String(tag || "").toLowerCase();
+  this.children = [];
+  this.style = "";
+  this.id = "";
+  this.name = "";
+  this.value = "";
+  this.type = "";
+  this.method = "GET";
+  this.action = "";
+}
+Elem.prototype.appendChild = function(c){ this.children.push(c); return c; };
+Elem.prototype.submit = function(){
+  var fields = {};
+  for (var i = 0; i < this.children.length; i++) {
+    var c = this.children[i];
+    if (c && c.name) { fields[String(c.name)] = String(c.value || ""); }
+  }
+  __challengeSubmit = {
+    action: String(this.action || ""),
+    method: String(this.method || "GET"),
+    fields: fields
+  };
+};
+
+var __dom = { hbla3o0puowl: new Elem("div") };
+
+var document = {
+  createElement: function(tag){ return new Elem(tag); },
+  getElementById: function(id){
+    if (!__dom[id]) { __dom[id] = new Elem("div"); }
+    return __dom[id];
+  },
+  addEventListener: function(evt, cb){ if (evt === "DOMContentLoaded" && typeof cb === "function") { cb(); } },
+  attachEvent: function(evt, cb){ if (typeof cb === "function") { cb(); } }
+};
+
+function PluginArray(){}
+function Plugin(){}
+function MimeTypeArray(){}
+function MimeType(){}
+
+var navigator = {
+  webdriver: false,
+  userAgent: "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/125.0",
+  appVersion: "5.0",
+  language: "es-MX",
+  languages: ["es-MX", "es", "en-US"],
+  plugins: [],
+  mimeTypes: []
+};
+
+navigator.plugins.__proto__ = PluginArray.prototype;
+var p0 = {};
+p0.__proto__ = Plugin.prototype;
+navigator.plugins.push(p0);
+
+navigator.mimeTypes.__proto__ = MimeTypeArray.prototype;
+var m0 = {};
+m0.__proto__ = MimeType.prototype;
+navigator.mimeTypes.push(m0);
+
+function XMLHttpRequest(){
+  this.open = function(){};
+  this.send = function(){};
+}
+
+function URLSearchParams(){ this._ = []; }
+URLSearchParams.prototype.append = function(k, v){ this._.push([String(k), String(v)]); };
+URLSearchParams.prototype.toString = function(){
+  var out = [];
+  for (var i = 0; i < this._.length; i++) {
+    out.push(encodeURIComponent(this._[i][0]) + "=" + encodeURIComponent(this._[i][1]));
+  }
+  return out.join("&");
+};
+
+var window = {
+  document: document,
+  navigator: navigator,
+  outerHeight: 900,
+  outerWidth: 1600,
+  XMLHttpRequest: XMLHttpRequest,
+  URLSearchParams: URLSearchParams,
+  addEventListener: document.addEventListener
+};
+
+function setTimeout(cb){ if (typeof cb === "function") { cb(); } return 1; }
+`
+
+	if _, err := vm.RunString(prelude); err != nil {
+		return nil, fmt.Errorf("prelude js inválido: %w", err)
+	}
+
+	if _, err := vm.RunString(script); err != nil {
+		return nil, fmt.Errorf("ejecución challenge js falló: %w", err)
+	}
+
+	v := vm.Get("__challengeSubmit")
+	if goja.IsUndefined(v) || goja.IsNull(v) {
+		return nil, fmt.Errorf("challenge no generó submit")
+	}
+
+	m, ok := v.Export().(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("submit challenge inválido")
+	}
+
+	action, _ := m["action"].(string)
+	method, _ := m["method"].(string)
+
+	fields := map[string]string{}
+	if rawFields, ok := m["fields"].(map[string]interface{}); ok {
+		for k, rv := range rawFields {
+			fields[k] = fmt.Sprintf("%v", rv)
+		}
+	}
+
+	return &challengeSubmission{Action: action, Method: method, Fields: fields}, nil
 }
 
 func solveWithFlareSolverr(client *http.Client, targetURL string) (string, error) {
