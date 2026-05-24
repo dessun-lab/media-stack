@@ -41,6 +41,7 @@ const (
 const captchaPreviewWidth = 80
 const maxHTTPRetries = 3
 const flareSolverrTimeout = 120000
+const mediaRootDefault = "/data/media"
 
 var runtimeUserAgent = UserAgent
 var runtimeFlareSession = ""
@@ -474,7 +475,7 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 	baseDir := strings.TrimSpace(os.Getenv("NENSAYSUBS_EPISODE_BASE_DIR"))
 	if interactive {
 		if askYesNo("[?] Quieres mover/renombrar SRT usando una carpeta base de episodios? (s/N): ", false) {
-			selected, selErr := chooseDirectoryInteractive(".")
+			selected, selErr := chooseDirectoryInteractive(mediaRootDefault)
 			if selErr != nil {
 				fmt.Printf("[!] Se omitio el post-proceso: %v\n", selErr)
 			} else {
@@ -503,11 +504,47 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 			}
 		}
 
-		moved, skipped, moveErr := moveAndRenameSubtitles(destination, baseDir)
-		if moveErr != nil {
-			fmt.Printf("[!] Error moviendo subtitulos: %v\n", moveErr)
+		manualRequested := false
+		if interactive {
+			manualRequested = askYesNo("[?] Activar modo manual asistido para peliculas/specials/multiidioma? (s/N): ", true)
+		}
+
+		if manualRequested {
+			manualMoved, manualRemaining, manualErr := moveSubtitlesManual(destination, baseDir)
+			if manualErr != nil {
+				fmt.Printf("[!] Error en modo manual: %v\n", manualErr)
+			} else {
+				fmt.Printf("[+] Modo manual completado. movidos=%d restantes=%d\n", manualMoved, manualRemaining)
+			}
 		} else {
-			fmt.Printf("[+] Post-proceso SRT completado. movidos=%d omitidos=%d\n", moved, skipped)
+			moved, skipped, moveErr := moveAndRenameSubtitles(destination, baseDir)
+			if moveErr != nil {
+				fmt.Printf("[!] Error moviendo subtitulos: %v\n", moveErr)
+			} else {
+				fmt.Printf("[+] Post-proceso SRT automatico completado. movidos=%d omitidos=%d\n", moved, skipped)
+			}
+
+			remaining, remErr := listSubtitleFiles(destination)
+			if remErr != nil {
+				fmt.Printf("[DEBUG] No se pudo listar subtitulos restantes: %v\n", remErr)
+			} else if len(remaining) > 0 {
+				multiLang := hasMultipleLanguageHints(remaining)
+				if interactive && (skipped > 0 || multiLang) {
+					msg := "[?] Se detectaron subtitulos restantes"
+					if multiLang {
+						msg += " (posible multiidioma)"
+					}
+					msg += ". Quieres abrir modo manual asistido? (S/n): "
+					if askYesNo(msg, false) {
+						manualMoved, manualRemaining, manualErr := moveSubtitlesManual(destination, baseDir)
+						if manualErr != nil {
+							fmt.Printf("[!] Error en modo manual: %v\n", manualErr)
+						} else {
+							fmt.Printf("[+] Modo manual completado. movidos=%d restantes=%d\n", manualMoved, manualRemaining)
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -1521,8 +1558,31 @@ func askYesNo(prompt string, defaultNo bool) bool {
 	return v == "s" || v == "si" || v == "y" || v == "yes"
 }
 
+type browserItem struct {
+	name  string
+	path  string
+	isDir bool
+}
+
 func chooseDirectoryInteractive(start string) (string, error) {
-	current, err := filepath.Abs(start)
+	return browseMediaPathInteractive(start, false)
+}
+
+func chooseVideoInteractive(start string) (string, error) {
+	return browseMediaPathInteractive(start, true)
+}
+
+func browseMediaPathInteractive(start string, allowVideoSelection bool) (string, error) {
+	root := strings.TrimSpace(start)
+	if root == "" {
+		root = mediaRootDefault
+	}
+
+	if st, err := os.Stat(root); err != nil || !st.IsDir() {
+		root = "."
+	}
+
+	current, err := filepath.Abs(root)
 	if err != nil {
 		return "", err
 	}
@@ -1534,23 +1594,55 @@ func chooseDirectoryInteractive(start string) (string, error) {
 			return "", err
 		}
 
-		dirs := make([]string, 0)
+		dirs := make([]browserItem, 0)
+		videos := make([]browserItem, 0)
 		for _, e := range entries {
+			name := e.Name()
+			fullPath := filepath.Join(current, name)
+
 			if e.IsDir() {
-				dirs = append(dirs, e.Name())
+				if strings.EqualFold(name, ".trickplay") {
+					continue
+				}
+				dirs = append(dirs, browserItem{name: name, path: fullPath, isDir: true})
+				continue
+			}
+
+			if isVideoFile(name) {
+				videos = append(videos, browserItem{name: name, path: fullPath, isDir: false})
 			}
 		}
+
+		sort.Slice(dirs, func(i, j int) bool {
+			return strings.ToLower(dirs[i].name) < strings.ToLower(dirs[j].name)
+		})
+		sort.Slice(videos, func(i, j int) bool {
+			return strings.ToLower(videos[i].name) < strings.ToLower(videos[j].name)
+		})
+
+		items := make([]browserItem, 0, len(dirs)+len(videos))
+		items = append(items, dirs...)
+		items = append(items, videos...)
 
 		fmt.Printf("\n[+] Carpeta actual: %s\n", current)
-		if len(dirs) == 0 {
-			fmt.Println("    (sin subcarpetas)")
+		if len(items) == 0 {
+			fmt.Println("    (sin subcarpetas ni videos)")
 		} else {
-			for i, d := range dirs {
-				fmt.Printf("  [%d] %s/\n", i+1, d)
+			for i, item := range items {
+				if item.isDir {
+					fmt.Printf("  [%d] %s/\n", i+1, item.name)
+				} else {
+					fmt.Printf("  [%d] %s\n", i+1, item.name)
+				}
 			}
 		}
 
-		fmt.Print("Elige numero, '..' subir, '.' seleccionar, ruta, o 'q' cancelar: ")
+		if allowVideoSelection {
+			fmt.Print("Elige numero, '..' subir, '.' seleccionar carpeta, ruta, o 'q' cancelar: ")
+		} else {
+			fmt.Print("Elige numero, '..' subir, '.' seleccionar carpeta, ruta, o 'q' cancelar: ")
+		}
+
 		line, _ := reader.ReadString('\n')
 		in := strings.TrimSpace(line)
 
@@ -1558,20 +1650,30 @@ func chooseDirectoryInteractive(start string) (string, error) {
 		case ".":
 			return current, nil
 		case "..":
-			parent := filepath.Dir(current)
-			current = parent
+			current = filepath.Dir(current)
 			continue
 		case "q", "Q":
 			return "", fmt.Errorf("cancelado por usuario")
 		}
 
 		if n, err := strconv.Atoi(in); err == nil {
-			if n < 1 || n > len(dirs) {
+			if n < 1 || n > len(items) {
 				fmt.Println("[!] Opcion fuera de rango")
 				continue
 			}
-			current = filepath.Join(current, dirs[n-1])
-			continue
+
+			chosen := items[n-1]
+			if chosen.isDir {
+				current = chosen.path
+				continue
+			}
+
+			if !allowVideoSelection {
+				fmt.Println("[!] Selecciona una carpeta, no un video")
+				continue
+			}
+
+			return chosen.path, nil
 		}
 
 		if in != "" {
@@ -1579,30 +1681,39 @@ func chooseDirectoryInteractive(start string) (string, error) {
 			if !filepath.IsAbs(cand) {
 				cand = filepath.Join(current, cand)
 			}
+
 			st, err := os.Stat(cand)
-			if err != nil || !st.IsDir() {
+			if err != nil {
 				fmt.Println("[!] Ruta invalida")
 				continue
 			}
-			current = cand
+
+			if st.IsDir() {
+				if strings.EqualFold(filepath.Base(cand), ".trickplay") {
+					fmt.Println("[!] Carpeta ignorada por filtro: .trickplay")
+					continue
+				}
+				current = cand
+				continue
+			}
+
+			if !allowVideoSelection {
+				fmt.Println("[!] Ruta invalida (se esperaba carpeta)")
+				continue
+			}
+
+			if !isVideoFile(cand) {
+				fmt.Println("[!] El archivo no es un video soportado (.mkv/.mp4/.avi)")
+				continue
+			}
+
+			return cand, nil
 		}
 	}
 }
 
 func moveAndRenameSubtitles(subsDir string, videosBaseDir string) (int, int, error) {
-	var srtFiles []string
-	err := filepath.Walk(subsDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if strings.EqualFold(filepath.Ext(path), ".srt") {
-			srtFiles = append(srtFiles, path)
-		}
-		return nil
-	})
+	srtFiles, err := listSubtitleFiles(subsDir)
 	if err != nil {
 		return 0, 0, err
 	}
@@ -1652,6 +1763,171 @@ func moveAndRenameSubtitles(subsDir string, videosBaseDir string) (int, int, err
 	}
 
 	return moved, skipped, nil
+
+}
+
+func listSubtitleFiles(subsDir string) ([]string, error) {
+	srtFiles := make([]string, 0)
+	err := filepath.Walk(subsDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if strings.EqualFold(filepath.Ext(path), ".srt") {
+			srtFiles = append(srtFiles, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(srtFiles)
+	return srtFiles, nil
+}
+
+func hasMultipleLanguageHints(srtFiles []string) bool {
+	seen := map[string]bool{}
+	for _, f := range srtFiles {
+		lang := inferLanguageHint(filepath.Base(f))
+		if lang == "" {
+			continue
+		}
+		seen[lang] = true
+		if len(seen) > 1 {
+			return true
+		}
+	}
+	return false
+}
+
+func inferLanguageHint(name string) string {
+	l := strings.ToLower(name)
+	hints := []struct {
+		needle string
+		tag    string
+	}{
+		{needle: "español", tag: "spa"},
+		{needle: "espanol", tag: "spa"},
+		{needle: "spanish", tag: "spa"},
+		{needle: "lat", tag: "spa"},
+		{needle: "english", tag: "eng"},
+		{needle: "inglés", tag: "eng"},
+		{needle: "ingles", tag: "eng"},
+		{needle: "deutsch", tag: "de"},
+		{needle: "german", tag: "de"},
+		{needle: "forced", tag: "forced"},
+		{needle: "sdh", tag: "sdh"},
+	}
+
+	for _, h := range hints {
+		if strings.Contains(l, h.needle) {
+			return h.tag
+		}
+	}
+
+	return ""
+}
+
+func sanitizeLanguageTag(tag string) string {
+	tag = strings.ToLower(strings.TrimSpace(tag))
+	if tag == "" {
+		return ""
+	}
+	re := regexp.MustCompile(`[^a-z0-9._-]`)
+	return re.ReplaceAllString(tag, "")
+}
+
+func isVideoFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".mkv" || ext == ".mp4" || ext == ".avi"
+}
+
+func moveSubtitlesManual(subsDir string, videosBaseDir string) (int, int, error) {
+	if videosBaseDir == "" {
+		videosBaseDir = mediaRootDefault
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	moved := 0
+
+	for {
+		srtFiles, err := listSubtitleFiles(subsDir)
+		if err != nil {
+			return moved, 0, err
+		}
+
+		if len(srtFiles) == 0 {
+			fmt.Println("[+] No quedan subtitulos .srt por mover.")
+			return moved, 0, nil
+		}
+
+		fmt.Println("\n[+] Subtitulos listos para mover:")
+		for i, s := range srtFiles {
+			fmt.Printf("  [%d] %s\n", i+1, filepath.Base(s))
+		}
+		fmt.Println("  [q] salir")
+		fmt.Print("Elige subtitle a procesar: ")
+
+		line, _ := reader.ReadString('\n')
+		in := strings.TrimSpace(line)
+		if strings.EqualFold(in, "q") {
+			return moved, len(srtFiles), nil
+		}
+
+		idx, err := strconv.Atoi(in)
+		if err != nil || idx < 1 || idx > len(srtFiles) {
+			fmt.Println("[!] Opcion invalida")
+			continue
+		}
+
+		subtitle := srtFiles[idx-1]
+
+		fmt.Println("[+] Selecciona el video destino...")
+		video, err := chooseVideoInteractive(videosBaseDir)
+		if err != nil {
+			fmt.Printf("[!] Seleccion de video cancelada: %v\n", err)
+			continue
+		}
+
+		defaultTag := inferLanguageHint(filepath.Base(subtitle))
+		if defaultTag == "" {
+			defaultTag = "spa"
+		}
+
+		fmt.Printf("Tag de idioma (ej: es, spa, eng, de, forced, sdh) [default=%s]: ", defaultTag)
+		tagLine, _ := reader.ReadString('\n')
+		tag := sanitizeLanguageTag(tagLine)
+		if tag == "" {
+			tag = defaultTag
+		}
+
+		target := strings.TrimSuffix(video, filepath.Ext(video)) + "." + tag + ".srt"
+
+		fmt.Println("\n[+] Creare:")
+		fmt.Println(filepath.Base(target))
+
+		if _, err := os.Stat(target); err == nil {
+			if !askYesNo("[?] Ya existe un archivo con ese nombre. Sobrescribir? (s/N): ", true) {
+				fmt.Println("[!] Operacion omitida")
+				continue
+			}
+		}
+
+		if !askYesNo("Confirmar? (S/n): ", false) {
+			fmt.Println("[!] Operacion cancelada")
+			continue
+		}
+
+		if err := moveFile(subtitle, target); err != nil {
+			fmt.Printf("[!] Error moviendo %s -> %s: %v\n", subtitle, target, err)
+			continue
+		}
+
+		fmt.Printf("[+] Movido: %s -> %s\n", filepath.Base(subtitle), target)
+		moved++
+	}
 }
 
 func extractEpisodeRef(name string) (int, int, bool) {
