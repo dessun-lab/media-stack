@@ -1696,6 +1696,7 @@ type challengeSubmission struct {
 	Action string
 	Method string
 	Fields map[string]string
+	Beacon string
 }
 
 func solveCustomVerificationChallenge(client *http.Client, body string, pageURL string) (bool, string, error) {
@@ -1708,14 +1709,29 @@ func solveCustomVerificationChallenge(client *http.Client, body string, pageURL 
 		return false, body, err
 	}
 
-	if submission == nil || submission.Action == "" || len(submission.Fields) == 0 {
+	if submission == nil {
 		return false, body, fmt.Errorf("challenge sin payload util")
 	}
 
-	actionURL := resolveChallengeAction(pageURL, submission.Action)
-	method := strings.ToUpper(strings.TrimSpace(submission.Method))
-	if method == "" {
-		method = "GET"
+	hasForm := submission.Action != "" && len(submission.Fields) > 0
+	hasBeacon := strings.TrimSpace(submission.Beacon) != ""
+	if !hasForm && !hasBeacon {
+		return false, body, fmt.Errorf("challenge sin payload util")
+	}
+
+	if hasBeacon {
+		beaconURL := resolveChallengeAction(pageURL, submission.Beacon)
+		bResp, bErr := doGetWithRetry(client, beaconURL, pageURL)
+		if bErr != nil {
+			return false, body, fmt.Errorf("fallo enviando beacon anti-bot: %w", bErr)
+		}
+		io.Copy(io.Discard, bResp.Body)
+		bResp.Body.Close()
+	}
+
+	actionURL := pageURL
+	if hasForm {
+		actionURL = resolveChallengeAction(pageURL, submission.Action)
 	}
 
 	form := url.Values{}
@@ -1723,31 +1739,38 @@ func solveCustomVerificationChallenge(client *http.Client, body string, pageURL 
 		form.Set(k, v)
 	}
 
-	if method == "POST" {
-		resp, err := doPostFormWithRetry(client, actionURL, form, pageURL)
-		if err != nil {
-			return false, body, err
+	if hasForm {
+		method := strings.ToUpper(strings.TrimSpace(submission.Method))
+		if method == "" {
+			method = "GET"
 		}
-		io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
-	} else {
-		u, err := url.Parse(actionURL)
-		if err != nil {
-			return false, body, err
-		}
-		q := u.Query()
-		for k, vals := range form {
-			for _, v := range vals {
-				q.Add(k, v)
+
+		if method == "POST" {
+			resp, err := doPostFormWithRetry(client, actionURL, form, pageURL)
+			if err != nil {
+				return false, body, err
 			}
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+		} else {
+			u, err := url.Parse(actionURL)
+			if err != nil {
+				return false, body, err
+			}
+			q := u.Query()
+			for k, vals := range form {
+				for _, v := range vals {
+					q.Add(k, v)
+				}
+			}
+			u.RawQuery = q.Encode()
+			resp, err := doGetWithRetry(client, u.String(), pageURL)
+			if err != nil {
+				return false, body, err
+			}
+			io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
 		}
-		u.RawQuery = q.Encode()
-		resp, err := doGetWithRetry(client, u.String(), pageURL)
-		if err != nil {
-			return false, body, err
-		}
-		io.Copy(io.Discard, resp.Body)
-		resp.Body.Close()
 	}
 
 	time.Sleep(1200 * time.Millisecond)
@@ -1854,6 +1877,7 @@ func extractChallengeSubmission(body string) (*challengeSubmission, error) {
 	vm := goja.New()
 	prelude := `
 var __challengeSubmit = null;
+var __challengeXHR = null;
 function Elem(tag){
   this.tagName = String(tag || "").toLowerCase();
   this.children = [];
@@ -1896,31 +1920,45 @@ function Plugin(){}
 function MimeTypeArray(){}
 function MimeType(){}
 
+function FakePluginArray(){}
+FakePluginArray.prototype = PluginArray.prototype;
+
+function FakeMimeTypeArray(){}
+FakeMimeTypeArray.prototype = MimeTypeArray.prototype;
+
+var plugins = new FakePluginArray();
+plugins.length = 1;
+var p0 = Object.create(Plugin.prototype);
+plugins[0] = p0;
+
+var mimeTypes = new FakeMimeTypeArray();
+mimeTypes.length = 1;
+var m0 = Object.create(MimeType.prototype);
+mimeTypes[0] = m0;
+
 var navigator = {
   webdriver: false,
   userAgent: "Mozilla/5.0 (X11; Linux x86_64) Gecko/20100101 Firefox/125.0",
   appVersion: "5.0",
   language: "es-MX",
   languages: ["es-MX", "es", "en-US"],
-  plugins: [],
-  mimeTypes: []
+	plugins: plugins,
+	mimeTypes: mimeTypes
 };
 
-navigator.plugins.__proto__ = PluginArray.prototype;
-var p0 = {};
-p0.__proto__ = Plugin.prototype;
-navigator.plugins[0] = p0;
-navigator.plugins.length = 1;
-
-navigator.mimeTypes.__proto__ = MimeTypeArray.prototype;
-var m0 = {};
-m0.__proto__ = MimeType.prototype;
-navigator.mimeTypes[0] = m0;
-navigator.mimeTypes.length = 1;
-
 function XMLHttpRequest(){
-  this.open = function(){};
-  this.send = function(){};
+	this._method = "GET";
+	this._url = "";
+	this.open = function(method, url){
+		this._method = String(method || "GET");
+		this._url = String(url || "");
+	};
+	this.send = function(){
+		__challengeXHR = {
+			method: this._method,
+			url: this._url
+		};
+	};
 }
 
 function URLSearchParams(){ this._ = []; }
@@ -1955,26 +1993,36 @@ function setTimeout(cb){ if (typeof cb === "function") { cb(); } return 1; }
 	}
 
 	v := vm.Get("__challengeSubmit")
-	if goja.IsUndefined(v) || goja.IsNull(v) {
-		return nil, fmt.Errorf("challenge no generó submit")
-	}
-
-	m, ok := v.Export().(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("submit challenge inválido")
-	}
-
-	action, _ := m["action"].(string)
-	method, _ := m["method"].(string)
-
 	fields := map[string]string{}
-	if rawFields, ok := m["fields"].(map[string]interface{}); ok {
-		for k, rv := range rawFields {
-			fields[k] = fmt.Sprintf("%v", rv)
+	action := ""
+	method := ""
+	if !goja.IsUndefined(v) && !goja.IsNull(v) {
+		m, ok := v.Export().(map[string]interface{})
+		if ok {
+			action, _ = m["action"].(string)
+			method, _ = m["method"].(string)
+			if rawFields, ok := m["fields"].(map[string]interface{}); ok {
+				for k, rv := range rawFields {
+					fields[k] = fmt.Sprintf("%v", rv)
+				}
+			}
 		}
 	}
 
-	return &challengeSubmission{Action: action, Method: method, Fields: fields}, nil
+	beacon := ""
+	xv := vm.Get("__challengeXHR")
+	if !goja.IsUndefined(xv) && !goja.IsNull(xv) {
+		xm, ok := xv.Export().(map[string]interface{})
+		if ok {
+			beacon, _ = xm["url"].(string)
+		}
+	}
+
+	if strings.TrimSpace(action) == "" && strings.TrimSpace(beacon) == "" {
+		return nil, fmt.Errorf("challenge no generó submit ni beacon")
+	}
+
+	return &challengeSubmission{Action: action, Method: method, Fields: fields, Beacon: beacon}, nil
 }
 
 func isBadGatewayPage(body string) bool {
