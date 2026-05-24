@@ -1874,12 +1874,14 @@ var navigator = {
 navigator.plugins.__proto__ = PluginArray.prototype;
 var p0 = {};
 p0.__proto__ = Plugin.prototype;
-navigator.plugins.push(p0);
+navigator.plugins[0] = p0;
+navigator.plugins.length = 1;
 
 navigator.mimeTypes.__proto__ = MimeTypeArray.prototype;
 var m0 = {};
 m0.__proto__ = MimeType.prototype;
-navigator.mimeTypes.push(m0);
+navigator.mimeTypes[0] = m0;
+navigator.mimeTypes.length = 1;
 
 function XMLHttpRequest(){
   this.open = function(){};
