@@ -18,6 +18,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -28,6 +29,7 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/dop251/goja"
 	"github.com/otiai10/gosseract/v2"
 	"golang.org/x/image/draw"
@@ -47,8 +49,13 @@ var runtimeUserAgent = UserAgent
 var runtimeFlareSession = ""
 
 type episode struct {
-	name  string
-	token string
+	Title         string
+	EpisodeNumber int
+	Filename      string
+	DownloadURL   string
+	EditURL       string
+	PageURL       string
+	Token         string
 }
 
 func main() {
@@ -238,7 +245,12 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 		}
 	}
 
-	episodes := parseEpisodes(body)
+	pages, pageErr := collectSeriesPages(client, seriesURL, body)
+	if pageErr != nil {
+		return fmt.Errorf("no se pudo recorrer paginacion de serie: %w", pageErr)
+	}
+
+	episodes := parseEpisodesFromPages(pages)
 	if len(episodes) == 0 {
 		fmt.Println(body)
 		return fmt.Errorf("no se encontraron episodios en la página")
@@ -255,10 +267,25 @@ func runSeriesDownload(series string, destination string, interactive bool) (err
 
 	downloadedCount := 0
 	for idx, ep := range episodes {
-		fmt.Printf("\n[+] Procesando %d/%d: %s\n", idx+1, len(episodes), ep.name)
+		displayName := strings.TrimSpace(ep.Title)
+		if displayName == "" {
+			displayName = strings.TrimSpace(ep.Filename)
+		}
+		if displayName == "" {
+			displayName = fmt.Sprintf("Episodio %02d", idx+1)
+		}
 
-		token := ep.token
-		episodeURL := BaseURL + "/senos/" + token
+		fmt.Printf("\n[+] Procesando %d/%d: %s\n", idx+1, len(episodes), displayName)
+
+		episodeURL := strings.TrimSpace(ep.DownloadURL)
+		if episodeURL == "" && ep.Token != "" {
+			episodeURL = BaseURL + "/senos/" + ep.Token
+		}
+		if episodeURL == "" {
+			fmt.Printf("[!] Episodio sin link de descarga. Omitiendo: %s\n", displayName)
+			continue
+		}
+
 		fmt.Println("[+] Opening episode page...")
 		fmt.Println(episodeURL)
 
@@ -1298,48 +1325,366 @@ func atoi(s string) int {
 	return n
 }
 
-func parseEpisodes(body string) []episode {
-	// Intenta capturar el nombre del episodio del HTML que rodea a descarga().
-	reNamed := regexp.MustCompile(`(?s)>([^<\n]{2,80}?)</[a-z]+[^>]*>\s*[^<]*?descarga\('\.\./senos/([a-zA-Z0-9]+)'`)
-	namedMatches := reNamed.FindAllStringSubmatch(body, -1)
-	nameFor := map[string]string{}
-	for _, m := range namedMatches {
-		if len(m) >= 3 {
-			name := strings.TrimSpace(m[1])
-			token := m[2]
-			if name != "" && nameFor[token] == "" {
-				nameFor[token] = name
+type seriesPage struct {
+	URL  string
+	Body string
+}
+
+func collectSeriesPages(client *http.Client, initialURL string, initialBody string) ([]seriesPage, error) {
+	initialURL = strings.TrimSpace(initialURL)
+	if initialURL == "" {
+		return nil, fmt.Errorf("url inicial de serie vacia")
+	}
+
+	queue := []string{initialURL}
+	queued := map[string]bool{initialURL: true}
+	visited := make(map[string]bool)
+	pages := make([]seriesPage, 0, 8)
+
+	for len(queue) > 0 {
+		currentURL := queue[0]
+		queue = queue[1:]
+		if visited[currentURL] {
+			continue
+		}
+		visited[currentURL] = true
+
+		var body string
+		if currentURL == initialURL && strings.TrimSpace(initialBody) != "" {
+			body = initialBody
+		} else {
+			fetched, err := fetchSeriesPageBody(client, currentURL, initialURL)
+			if err != nil {
+				fmt.Printf("[WARN] No se pudo leer página %s: %v\n", currentURL, err)
+				continue
+			}
+			body = fetched
+		}
+
+		pages = append(pages, seriesPage{URL: currentURL, Body: body})
+
+		nextLinks := extractSeriesPageLinks(body, currentURL)
+		for _, nextURL := range nextLinks {
+			if nextURL == "" || visited[nextURL] || queued[nextURL] {
+				continue
+			}
+			queued[nextURL] = true
+			queue = append(queue, nextURL)
+		}
+	}
+
+	fmt.Printf("[DEBUG] Paginacion detectada: %d página(s) recorridas\n", len(pages))
+	return pages, nil
+}
+
+func fetchSeriesPageBody(client *http.Client, pageURL string, referer string) (string, error) {
+	resp, err := doGetWithRetry(client, pageURL, referer)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	body := string(bodyBytes)
+
+	if isVerificationPage(body) {
+		flareBody, fsErr := solveWithFlareSolverr(client, pageURL)
+		if fsErr != nil {
+			return "", fmt.Errorf("anti-bot detectado en paginacion: %w", fsErr)
+		}
+
+		resp2, err := doGetWithRetry(client, pageURL, BaseURL+"/")
+		if err == nil {
+			defer resp2.Body.Close()
+			bodyBytes2, readErr := io.ReadAll(resp2.Body)
+			if readErr == nil {
+				body = string(bodyBytes2)
 			}
 		}
+
+		if isVerificationPage(body) && strings.TrimSpace(flareBody) != "" {
+			body = flareBody
+		}
 	}
 
-	reToken := regexp.MustCompile(`descarga\('\.\./senos/([a-zA-Z0-9]+)'`)
-	allMatches := reToken.FindAllStringSubmatch(body, -1)
+	if isIngresoGatePage(body) {
+		if err := solveEntryGate(client); err != nil {
+			return "", err
+		}
 
-	seen := map[string]bool{}
-	var eps []episode
-	for i, m := range allMatches {
-		if len(m) < 2 {
-			continue
+		resp3, err := doGetWithRetry(client, pageURL, BaseURL+"/ingreso/")
+		if err != nil {
+			return "", err
 		}
-		token := m[1]
-		if seen[token] {
-			continue
+		defer resp3.Body.Close()
+
+		bodyBytes3, err := io.ReadAll(resp3.Body)
+		if err != nil {
+			return "", err
 		}
-		seen[token] = true
-		name := nameFor[token]
-		if name == "" {
-			name = fmt.Sprintf("Episodio %02d", i+1)
-		}
-		eps = append(eps, episode{name: name, token: token})
+		body = string(bodyBytes3)
 	}
-	return eps
+
+	if isVerificationPage(body) {
+		solved, newBody, err := solveCustomVerificationChallenge(client, body, pageURL)
+		if err != nil {
+			fmt.Printf("[DEBUG] Emulación challenge en paginacion falló: %v\n", err)
+		}
+		if solved {
+			body = newBody
+		}
+	}
+
+	return body, nil
+}
+
+func extractSeriesPageLinks(body string, pageURL string) []string {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
+	if err != nil {
+		return nil
+	}
+
+	seen := make(map[string]bool)
+	links := make([]string, 0, 8)
+	doc.Find("a[href]").Each(func(_ int, s *goquery.Selection) {
+		href, ok := s.Attr("href")
+		if !ok {
+			return
+		}
+		href = strings.TrimSpace(href)
+		if href == "" {
+			return
+		}
+
+		text := strings.ToLower(strings.TrimSpace(s.Text()))
+		h := strings.ToLower(href)
+		if !strings.Contains(text, "siguiente") && !strings.Contains(h, "&pn=") && !strings.Contains(h, "?pn=") {
+			return
+		}
+
+		abs := resolveRelativeURL(pageURL, href)
+		if abs == "" || seen[abs] {
+			return
+		}
+		seen[abs] = true
+		links = append(links, abs)
+	})
+
+	return links
+}
+
+func parseEpisodesFromPages(pages []seriesPage) []episode {
+	result := make([]episode, 0)
+	seen := make(map[string]bool)
+
+	for _, page := range pages {
+		parsed := parseEpisodeBlocks(page.Body, page.URL)
+		for _, ep := range parsed {
+			key := strings.TrimSpace(ep.DownloadURL)
+			if key == "" {
+				key = strings.TrimSpace(ep.PageURL) + "|" + strings.TrimSpace(ep.Title) + "|" + strings.TrimSpace(ep.Filename)
+			}
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			result = append(result, ep)
+		}
+	}
+
+	fmt.Printf("[DEBUG] Episodios parseados por bloques DOM: %d\n", len(result))
+	return result
+}
+
+func parseEpisodeBlocks(body string, pageURL string) []episode {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(body))
+	if err != nil {
+		fmt.Printf("[WARN] No se pudo parsear HTML de %s: %v\n", pageURL, err)
+		return nil
+	}
+
+	episodes := make([]episode, 0)
+	doc.Find("span#animetitu").Each(func(_ int, titleSel *goquery.Selection) {
+		title := normalizeSpace(titleSel.Text())
+		titleEpisode := extractEpisodeNumberFromText(title)
+
+		tr := titleSel.ParentsFiltered("tr").First()
+		if tr.Length() == 0 {
+			return
+		}
+
+		filename := ""
+		downloadURL := ""
+		editURL := ""
+
+		for row := tr.Next(); row.Length() > 0; row = row.Next() {
+			if row.Find("span#animetitu").Length() > 0 {
+				break
+			}
+
+			if filename == "" {
+				if occ := row.Find("div.ocultandoletras").First(); occ.Length() > 0 {
+					if v, ok := occ.Attr("title"); ok && strings.TrimSpace(v) != "" {
+						filename = normalizeSpace(v)
+					} else {
+						filename = normalizeSpace(occ.Text())
+					}
+				}
+			}
+
+			row.Find("input").Each(func(_ int, inputSel *goquery.Selection) {
+				onclick, ok := inputSel.Attr("onClick")
+				if !ok {
+					onclick, ok = inputSel.Attr("onclick")
+				}
+				if !ok || strings.TrimSpace(onclick) == "" {
+					return
+				}
+
+				if downloadURL == "" {
+					if rel := extractOnClickArg(onclick, "descarga"); rel != "" {
+						downloadURL = resolveRelativeURL(pageURL, rel)
+					}
+				}
+				if editURL == "" {
+					if rel := extractOnClickArg(onclick, "otro"); rel != "" {
+						editURL = resolveRelativeURL(pageURL, rel)
+					}
+				}
+			})
+
+			if filename != "" && downloadURL != "" && editURL != "" {
+				break
+			}
+		}
+
+		if downloadURL == "" {
+			fmt.Printf("[WARN] Episodio sin link descarga (bloque omitido): title=%q page=%s\n", title, pageURL)
+			return
+		}
+		if filename == "" {
+			fmt.Printf("[WARN] Episodio sin filename en bloque: title=%q page=%s\n", title, pageURL)
+		}
+
+		filenameEpisode := extractEpisodeNumberFromText(filename)
+		if titleEpisode > 0 && filenameEpisode > 0 && titleEpisode != filenameEpisode {
+			fmt.Printf("[WARN] mismatch: title episode=%d filename episode=%d title=%q filename=%q\n", titleEpisode, filenameEpisode, title, filename)
+		}
+
+		token := extractTokenFromDownloadURL(downloadURL)
+		episodes = append(episodes, episode{
+			Title:         title,
+			EpisodeNumber: titleEpisode,
+			Filename:      filename,
+			DownloadURL:   downloadURL,
+			EditURL:       editURL,
+			PageURL:       pageURL,
+			Token:         token,
+		})
+
+		fmt.Printf("[DEBUG] Episode block: title=%q file=%q download=%s\n", title, filename, downloadURL)
+	})
+
+	return episodes
+}
+
+func normalizeSpace(text string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(text)), " ")
+}
+
+func extractOnClickArg(onclick string, fn string) string {
+	re := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(fn) + `\(\s*['\"]([^'\"]+)['\"]`)
+	m := re.FindStringSubmatch(onclick)
+	if len(m) < 2 {
+		return ""
+	}
+	return strings.TrimSpace(m[1])
+}
+
+func resolveRelativeURL(baseURL string, rel string) string {
+	rel = strings.TrimSpace(rel)
+	if rel == "" {
+		return ""
+	}
+
+	b, err := url.Parse(baseURL)
+	if err != nil {
+		return rel
+	}
+	r, err := url.Parse(rel)
+	if err != nil {
+		return rel
+	}
+	return b.ResolveReference(r).String()
+}
+
+func extractEpisodeNumberFromText(text string) int {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return 0
+	}
+
+	if m := regexp.MustCompile(`(?i)s\s*([0-9]{1,2})\s*e\s*([0-9]{1,3})`).FindStringSubmatch(text); len(m) >= 3 {
+		n, err := strconv.Atoi(m[2])
+		if err == nil {
+			return n
+		}
+	}
+
+	if m := regexp.MustCompile(`(?i)sub\D*([0-9]{1,3})`).FindStringSubmatch(text); len(m) >= 2 {
+		n, err := strconv.Atoi(m[1])
+		if err == nil {
+			return n
+		}
+	}
+
+	if m := regexp.MustCompile(`(?i)(?:episodio|ep|e)\D*([0-9]{1,3})`).FindStringSubmatch(text); len(m) >= 2 {
+		n, err := strconv.Atoi(m[1])
+		if err == nil {
+			return n
+		}
+	}
+
+	nums := regexp.MustCompile(`([0-9]{1,3})`).FindAllStringSubmatch(text, -1)
+	for i := len(nums) - 1; i >= 0; i-- {
+		n, err := strconv.Atoi(nums[i][1])
+		if err == nil && n > 0 && n < 400 && n != 720 && n != 1080 && n != 2160 {
+			return n
+		}
+	}
+
+	return 0
+}
+
+func extractTokenFromDownloadURL(downloadURL string) string {
+	u, err := url.Parse(strings.TrimSpace(downloadURL))
+	if err != nil {
+		return ""
+	}
+	if u.Path == "" {
+		return ""
+	}
+	token := strings.TrimSpace(path.Base(u.Path))
+	if token == "." || token == "/" {
+		return ""
+	}
+	return token
 }
 
 func selectEpisodes(eps []episode) []episode {
 	fmt.Printf("\n[+] Se encontraron %d episodio(s):\n\n", len(eps))
 	for i, ep := range eps {
-		fmt.Printf("  [%2d] %s\n", i+1, ep.name)
+		display := strings.TrimSpace(ep.Title)
+		if display == "" {
+			display = strings.TrimSpace(ep.Filename)
+		}
+		if display == "" {
+			display = strings.TrimSpace(ep.DownloadURL)
+		}
+		fmt.Printf("  [%2d] %s\n", i+1, display)
 	}
 	fmt.Print("\nElige cuáles descargar (ej: 1 3 5-7) o 'todo' para todos: ")
 
