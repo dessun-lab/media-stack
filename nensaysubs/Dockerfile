@@ -2,6 +2,7 @@ FROM golang:1.26-alpine
 
 RUN apk add --no-cache \
     ffmpeg \
+    p7zip \
     tesseract-ocr \
     tesseract-ocr-dev \
     tesseract-ocr-data-eng \

@@ -1251,6 +1251,41 @@ func unzip(
 	return nil
 }
 
+func extractArchiveFile(path string, dest string) error {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".zip":
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return unzip(data, dest)
+	case ".rar":
+		if _, err := exec.LookPath("7z"); err != nil {
+			return fmt.Errorf("7z no disponible para extraer RAR")
+		}
+		cmd := exec.Command("7z", "x", "-y", "-o"+dest, path)
+		var stderr bytes.Buffer
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			msg := strings.TrimSpace(stderr.String())
+			if msg == "" {
+				msg = err.Error()
+			}
+			return fmt.Errorf("7z fallo extrayendo %s: %s", filepath.Base(path), msg)
+		}
+		return nil
+	default:
+		return fmt.Errorf("archivo no soportado para extraccion: %s", path)
+	}
+}
+
+func isArchiveFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".zip" || ext == ".rar"
+}
+
 func atoi(s string) int {
 
 	n := 0
@@ -1488,7 +1523,7 @@ func scanSubtitleCounts(dir string) (int, int, int, error) {
 }
 
 func extractPendingZips(dir string) (int, error) {
-	zipPaths := make([]string, 0)
+	archivePaths := make([]string, 0)
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -1497,8 +1532,8 @@ func extractPendingZips(dir string) (int, error) {
 		if info.IsDir() {
 			return nil
 		}
-		if strings.EqualFold(filepath.Ext(path), ".zip") {
-			zipPaths = append(zipPaths, path)
+		if isArchiveFile(path) {
+			archivePaths = append(archivePaths, path)
 		}
 		return nil
 	})
@@ -1506,27 +1541,24 @@ func extractPendingZips(dir string) (int, error) {
 		return 0, err
 	}
 
-	if len(zipPaths) == 0 {
+	if len(archivePaths) == 0 {
 		return 0, nil
 	}
 
+	sort.Strings(archivePaths)
+
 	count := 0
-	for _, zp := range zipPaths {
-		data, err := os.ReadFile(zp)
-		if err != nil {
-			fmt.Printf("[DEBUG] No se pudo leer ZIP pendiente %s: %v\n", zp, err)
+	for _, archivePath := range archivePaths {
+		if err := extractArchiveFile(archivePath, dir); err != nil {
+			fmt.Printf("[DEBUG] No se pudo extraer archivo pendiente %s: %v\n", archivePath, err)
 			continue
 		}
 
-		if err := unzip(data, dir); err != nil {
-			fmt.Printf("[DEBUG] No se pudo extraer ZIP pendiente %s: %v\n", zp, err)
-			continue
+		if err := os.Remove(archivePath); err != nil {
+			fmt.Printf("[DEBUG] Archivo extraido pero no se pudo borrar %s: %v\n", archivePath, err)
 		}
 
-		if err := os.Remove(zp); err != nil {
-			fmt.Printf("[DEBUG] ZIP extraido pero no se pudo borrar %s: %v\n", zp, err)
-		}
-
+		fmt.Printf("[DEBUG] Archivo anidado extraido: %s\n", archivePath)
 		count++
 	}
 
