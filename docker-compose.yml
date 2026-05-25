@@ -310,6 +310,15 @@ services:
       - /home/devops/runtime/arrstack/nensaysubs:/runtime
       - /data/media:/data/media
 
+  ffsubsync:
+    image: ffsubsync:latest
+    restart: "no"
+    container_name: ffsubsync
+    volumes:
+      - /data/media:/data/media
+    stdin_open: true
+    tty: true
+
 networks:
   arrnetwork:
     name: arrnet_managed
