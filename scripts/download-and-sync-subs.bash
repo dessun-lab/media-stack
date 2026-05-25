@@ -4,23 +4,65 @@ set -e
 
 SUBS_DIR="/data/media/subs"
 MEDIA_ROOT="/data/media"
+SYNC_ONLY=false
 
-if [ $# -lt 1 ]; then
+usage() {
 	echo "Uso:"
 	echo "  $0 <anime_slug>"
+	echo "  $0 --sync-only"
+	echo ""
+	echo "Opciones:"
+	echo "  -s, --sync-only   No descarga; abre directamente modo de sincronizacion"
+	echo "  -h, --help        Muestra esta ayuda"
+}
+
+ANIME=""
+while [ $# -gt 0 ]; do
+	case "$1" in
+		-s|--sync-only)
+			SYNC_ONLY=true
+			shift
+			;;
+		-h|--help)
+			usage
+			exit 0
+			;;
+		-*)
+			echo "[!] Flag desconocido: $1"
+			usage
+			exit 1
+			;;
+		*)
+			if [ -z "$ANIME" ]; then
+				ANIME="$1"
+			else
+				echo "[!] Argumento extra no esperado: $1"
+				usage
+				exit 1
+			fi
+			shift
+			;;
+	esac
+done
+
+if [ "$SYNC_ONLY" = false ] && [ -z "$ANIME" ]; then
+	usage
 	exit 1
 fi
 
-ANIME="$1"
+if [ "$SYNC_ONLY" = true ]; then
+	echo
+	echo "[+] Modo sync-only activado: se omite descarga."
+else
+	echo
+	echo "[+] Descargando subtitulos..."
+	docker exec -it nensaysubs /usr/local/bin/nensaysubs "$ANIME" "$SUBS_DIR"
 
-echo
-echo "[+] Descargando subtitulos..."
-docker exec -it nensaysubs /usr/local/bin/nensaysubs "$ANIME" "$SUBS_DIR"
+	echo
+	read -rp "[?] Sincronizar subtitulos? (s/N): " NEED_SYNC
 
-echo
-read -rp "[?] Sincronizar subtitulos? (s/N): " NEED_SYNC
-
-[[ ! "$NEED_SYNC" =~ ^[Ss]$ ]] && exit 0
+	[[ ! "$NEED_SYNC" =~ ^[Ss]$ ]] && exit 0
+fi
 
 find_video_for_sub() {
 	local sub_path="$1"
@@ -156,8 +198,8 @@ select_folder() {
 	local CURRENT="$1"
 
 	while true; do
-		echo
-		echo "[+] Carpeta actual: $CURRENT"
+		echo >&2
+		echo "[+] Carpeta actual: $CURRENT" >&2
 
 		mapfile -t DIRS < <(
 			find "$CURRENT" -maxdepth 1 -type d \
@@ -168,11 +210,11 @@ select_folder() {
 
 		local IDX=1
 		for d in "${DIRS[@]}"; do
-			echo "  [$IDX] $(basename "$d")/"
+			echo "  [$IDX] $(basename "$d")/" >&2
 			IDX=$((IDX+1))
 		done
 
-		echo
+		echo >&2
 		read -rp "Elige numero, '..' subir, '.' seleccionar carpeta, 'q' cancelar: " CHOICE
 
 		if [ "$CHOICE" = "q" ]; then
