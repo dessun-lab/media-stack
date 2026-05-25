@@ -1261,10 +1261,10 @@ func extractArchiveFile(path string, dest string) error {
 		}
 		return unzip(data, dest)
 	case ".rar":
-		if _, err := exec.LookPath("unrar"); err != nil {
-			return fmt.Errorf("unrar no disponible para extraer RAR")
+		if _, err := exec.LookPath("unar"); err != nil {
+			return fmt.Errorf("unar no disponible para extraer RAR")
 		}
-		cmd := exec.Command("unrar", "x", "-o+", "-y", path, dest+"/")
+		cmd := exec.Command("unar", "-o", dest, path)
 		var stderr bytes.Buffer
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = &stderr
@@ -1273,7 +1273,7 @@ func extractArchiveFile(path string, dest string) error {
 			if msg == "" {
 				msg = err.Error()
 			}
-			return fmt.Errorf("unrar fallo extrayendo %s: %s", filepath.Base(path), msg)
+			return fmt.Errorf("unar fallo extrayendo %s: %s", filepath.Base(path), msg)
 		}
 		return nil
 	default:
