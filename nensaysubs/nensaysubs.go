@@ -61,6 +61,31 @@ type episode struct {
 func main() {
 	args := os.Args[1:]
 
+	// --move-only mode: skip download, run only the post-processing (move/rename) step.
+	// Usage: nensaysubs --move-only [subsDir [baseVideoDir]]
+	if len(args) > 0 && (args[0] == "--move-only" || args[0] == "-m") {
+		dest := strings.TrimSpace(os.Getenv("NENSAYSUBS_OUTPUT_DIR"))
+		if len(args) > 1 {
+			dest = args[1]
+		}
+		if dest == "" {
+			dest = "/data/media/subs"
+		}
+
+		baseDir := strings.TrimSpace(os.Getenv("NENSAYSUBS_EPISODE_BASE_DIR"))
+		if len(args) > 2 {
+			baseDir = args[2]
+		}
+
+		interactive := envBool("NENSAYSUBS_INTERACTIVE", true)
+
+		if err := runMoveOnly(dest, baseDir, interactive); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	series := ""
 	if len(args) > 0 {
 		series = args[0]
@@ -71,6 +96,7 @@ func main() {
 	if series == "" {
 		fmt.Fprintln(os.Stderr, "uso: nensaysubs <SerieSlug> [destino]")
 		fmt.Fprintln(os.Stderr, "     nensaysubs Maoyuu_Maou_Yuusha /data/media/subs")
+		fmt.Fprintln(os.Stderr, "     nensaysubs --move-only [subsDir [baseVideoDir]]")
 		os.Exit(1)
 	}
 
@@ -103,6 +129,87 @@ func envBool(name string, defaultValue bool) bool {
 	default:
 		return defaultValue
 	}
+}
+
+func runMoveOnly(destination string, baseDir string, interactive bool) error {
+	if destination == "" {
+		destination = "/data/media/subs"
+	}
+
+	fmt.Printf("[+] Modo --move-only. Directorio de subtitulos: %s\n", destination)
+
+	// Extract any leftover ZIPs/RARs that may still be packed
+	if extractedCount, zipErr := extractAllPendingZips(destination, 4); zipErr != nil {
+		fmt.Printf("[DEBUG] Error extrayendo archivos pendientes: %v\n", zipErr)
+	} else if extractedCount > 0 {
+		fmt.Printf("[DEBUG] Archivos pendientes extraidos: %d\n", extractedCount)
+	}
+
+	srtCount, assCount, ssaCount, scanErr := scanSubtitleCounts(destination)
+	if scanErr != nil {
+		fmt.Printf("[DEBUG] No se pudo escanear subtitulos en %s: %v\n", destination, scanErr)
+	} else {
+		fmt.Printf("[+] Subtitulos disponibles en %s: .srt=%d .ass=%d .ssa=%d\n", destination, srtCount, assCount, ssaCount)
+	}
+
+	if baseDir == "" && interactive {
+		if askYesNo("[?] Quieres mover/renombrar subtitulos usando una carpeta base de episodios? (s/N): ", false) {
+			selected, selErr := chooseDirectoryInteractive(mediaRootDefault)
+			if selErr != nil {
+				return fmt.Errorf("se omitio el post-proceso: %w", selErr)
+			}
+			baseDir = selected
+		}
+	}
+
+	if baseDir == "" {
+		return fmt.Errorf("se requiere directorio base de episodios (baseVideoDir o NENSAYSUBS_EPISODE_BASE_DIR)")
+	}
+
+	manualRequested := false
+	if interactive {
+		manualRequested = askYesNo("[?] Activar modo manual asistido para peliculas/specials/multiidioma? (s/N): ", true)
+	}
+
+	if manualRequested {
+		manualMoved, manualRemaining, manualErr := moveSubtitlesManual(destination, baseDir)
+		if manualErr != nil {
+			fmt.Printf("[!] Error en modo manual: %v\n", manualErr)
+		} else {
+			fmt.Printf("[+] Modo manual completado. movidos=%d restantes=%d\n", manualMoved, manualRemaining)
+		}
+	} else {
+		moved, skipped, moveErr := moveAndRenameSubtitles(destination, baseDir)
+		if moveErr != nil {
+			fmt.Printf("[!] Error moviendo subtitulos: %v\n", moveErr)
+		} else {
+			fmt.Printf("[+] Post-proceso automatico completado. movidos=%d omitidos=%d\n", moved, skipped)
+		}
+
+		remaining, remErr := listSubtitleFiles(destination)
+		if remErr != nil {
+			fmt.Printf("[DEBUG] No se pudo listar subtitulos restantes: %v\n", remErr)
+		} else if len(remaining) > 0 {
+			multiLang := hasMultipleLanguageHints(remaining)
+			if interactive && (skipped > 0 || multiLang) {
+				msg := "[?] Se detectaron subtitulos restantes"
+				if multiLang {
+					msg += " (posible multiidioma)"
+				}
+				msg += ". Quieres abrir modo manual asistido? (S/n): "
+				if askYesNo(msg, false) {
+					manualMoved, manualRemaining, manualErr := moveSubtitlesManual(destination, baseDir)
+					if manualErr != nil {
+						fmt.Printf("[!] Error en modo manual: %v\n", manualErr)
+					} else {
+						fmt.Printf("[+] Modo manual completado. movidos=%d restantes=%d\n", manualMoved, manualRemaining)
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func runSeriesDownload(series string, destination string, interactive bool) (err error) {

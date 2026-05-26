@@ -10,10 +10,12 @@ usage() {
 	echo "Uso:"
 	echo "  $0 <anime_slug>"
 	echo "  $0 --sync-only"
+	echo "  $0 --move-only [baseVideoDir]"
 	echo ""
 	echo "Opciones:"
-	echo "  -s, --sync-only   No descarga; abre directamente modo de sincronizacion"
-	echo "  -h, --help        Muestra esta ayuda"
+	echo "  -s, --sync-only           No descarga; abre directamente modo de sincronizacion"
+	echo "  -m, --move-only [dir]     Solo ejecuta el paso de mover/renombrar subs ya descargados"
+	echo "  -h, --help                Muestra esta ayuda"
 }
 
 ANIME=""
@@ -22,6 +24,15 @@ while [ $# -gt 0 ]; do
 		-s|--sync-only)
 			SYNC_ONLY=true
 			shift
+			;;
+		-m|--move-only)
+			MOVE_ONLY=true
+			shift
+			# optional positional arg: base video dir
+			if [ $# -gt 0 ] && [[ "$1" != -* ]]; then
+				MEDIA_ROOT="$1"
+				shift
+			fi
 			;;
 		-h|--help)
 			usage
@@ -45,12 +56,17 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-if [ "$SYNC_ONLY" = false ] && [ -z "$ANIME" ]; then
+if [ "$SYNC_ONLY" = false ] && [ "$MOVE_ONLY" = false ] && [ -z "$ANIME" ]; then
 	usage
 	exit 1
 fi
 
-if [ "$SYNC_ONLY" = true ]; then
+if [ "$MOVE_ONLY" = true ]; then
+	echo
+	echo "[+] Modo move-only: ejecutando solo el paso de mover/renombrar subtitulos..."
+	docker exec -it nensaysubs /usr/local/bin/nensaysubs --move-only "$SUBS_DIR" "$MEDIA_ROOT"
+	exit 0
+elif [ "$SYNC_ONLY" = true ]; then
 	echo
 	echo "[+] Modo sync-only activado: se omite descarga."
 else
