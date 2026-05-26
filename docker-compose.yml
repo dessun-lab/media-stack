@@ -126,12 +126,14 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
     restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
     environment:
       - LOG_LEVEL=info
       - TZ=${TZ}
-    networks:
-      arrnetwork:
-        ipv4_address: 172.18.0.6
 
   # ============================================================
   # RADARR — Movie Manager (NOT behind VPN)
@@ -299,12 +301,14 @@ services:
       gluetun:
         condition: service_healthy
         restart: true
+      flaresolverr:
+        condition: service_started
     network_mode: service:gluetun
     environment:
       - TZ=${TZ}
       - NENSAYSUBS_OUTPUT_DIR=/data/media/subs
       - NENSAYSUBS_EPISODE_BASE_DIR=/data/media
-      - NENSAYSUBS_FLARESOLVERR_URL=http://flaresolverr:8191/v1
+      - NENSAYSUBS_FLARESOLVERR_URL=http://127.0.0.1:8191/v1
       - NENSAYSUBS_INTERACTIVE=true
     volumes:
       - /home/devops/runtime/arrstack/nensaysubs:/runtime
