@@ -152,11 +152,21 @@ func runMoveOnly(destination string, baseDir string, interactive bool) error {
 		fmt.Printf("[+] Subtitulos disponibles en %s: .srt=%d .ass=%d .ssa=%d\n", destination, srtCount, assCount, ssaCount)
 	}
 
-	if baseDir == "" && interactive {
-		if askYesNo("[?] Quieres mover/renombrar subtitulos usando una carpeta base de episodios? (s/N): ", false) {
+	if interactive {
+		if strings.TrimSpace(baseDir) != "" {
+			fmt.Printf("[+] Carpeta base actual para buscar videos: %s\n", baseDir)
+			if askYesNo("[?] Quieres cambiarla con navegador interactivo? (s/N): ", false) {
+				selected, selErr := chooseDirectoryInteractive(baseDir)
+				if selErr != nil {
+					return fmt.Errorf("seleccion de carpeta cancelada: %w", selErr)
+				}
+				baseDir = selected
+			}
+		} else {
+			fmt.Println("[?] Selecciona la carpeta base donde estan los videos...")
 			selected, selErr := chooseDirectoryInteractive(mediaRootDefault)
 			if selErr != nil {
-				return fmt.Errorf("se omitio el post-proceso: %w", selErr)
+				return fmt.Errorf("seleccion de carpeta cancelada: %w", selErr)
 			}
 			baseDir = selected
 		}
@@ -2533,8 +2543,28 @@ func cleanupSubsWorkspace(root string) error {
 }
 
 func extractEpisodeRef(name string) (int, int, bool) {
+	cleanName := strings.TrimSpace(name)
+	if cleanName == "" {
+		return -1, 0, false
+	}
+
+	// Remove noisy bracketed chunks (CRC hashes, codec tags, etc.) before parsing.
+	cleanName = regexp.MustCompile(`\[[^\]]*\]`).ReplaceAllString(cleanName, " ")
+	cleanName = regexp.MustCompile(`\([^\)]*\)`).ReplaceAllString(cleanName, " ")
+	cleanName = strings.Join(strings.Fields(cleanName), " ")
+
+	// Common anime release style: "S2 - 02" / "S02 - 02".
+	reSdashEp := regexp.MustCompile(`(?i)\bs\s*([0-9]{1,2})\s*[-_. ]+\s*([0-9]{1,3})\b`)
+	if m := reSdashEp.FindStringSubmatch(cleanName); len(m) >= 3 {
+		s, errS := strconv.Atoi(m[1])
+		e, errE := strconv.Atoi(m[2])
+		if errS == nil && errE == nil && e > 0 {
+			return s, e, true
+		}
+	}
+
 	reSE := regexp.MustCompile(`(?i)s\s*([0-9]{1,2})\s*e\s*([0-9]{1,3})`)
-	if m := reSE.FindStringSubmatch(name); len(m) >= 3 {
+	if m := reSE.FindStringSubmatch(cleanName); len(m) >= 3 {
 		s, errS := strconv.Atoi(m[1])
 		e, errE := strconv.Atoi(m[2])
 		if errS == nil && errE == nil && e > 0 {
@@ -2548,7 +2578,7 @@ func extractEpisodeRef(name string) (int, int, bool) {
 	}
 
 	for _, re := range rePatterns {
-		m := re.FindStringSubmatch(name)
+		m := re.FindStringSubmatch(cleanName)
 		if len(m) >= 2 {
 			n, err := strconv.Atoi(m[1])
 			if err == nil && n > 0 {
@@ -2557,10 +2587,12 @@ func extractEpisodeRef(name string) (int, int, bool) {
 		}
 	}
 
-	allNums := regexp.MustCompile(`([0-9]{1,3})`).FindAllStringSubmatch(name, -1)
+	// Conservative fallback: only use standalone numbers from cleaned name,
+	// avoiding 3+ digit values that usually come from CRC/build tags.
+	allNums := regexp.MustCompile(`\b([0-9]{1,2})\b`).FindAllStringSubmatch(cleanName, -1)
 	for i := len(allNums) - 1; i >= 0; i-- {
 		n, err := strconv.Atoi(allNums[i][1])
-		if err == nil && n > 0 && n < 400 {
+		if err == nil && n > 0 && n < 100 {
 			// Avoid common resolution/year noise when guessing from plain numbers.
 			if n == 720 || n == 1080 || n == 2160 {
 				continue
@@ -2580,7 +2612,8 @@ func findVideoByEpisode(baseDir string, season int, ep int) (string, error) {
 		se = fmt.Sprintf("s%02de%02d", season, ep)
 	}
 
-	var matches []string
+	var seasonMatches []string
+	var episodeOnlyMatches []string
 	err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return err
@@ -2591,23 +2624,43 @@ func findVideoByEpisode(baseDir string, season int, ep int) (string, error) {
 		}
 		name := strings.ToLower(filepath.Base(path))
 		if se != "" && strings.Contains(name, se) {
-			matches = append(matches, path)
+			seasonMatches = append(seasonMatches, path)
 			return nil
 		}
-		if strings.Contains(name, ep2) || strings.Contains(name, ep3) {
-			matches = append(matches, path)
+
+		if season < 0 && (strings.Contains(name, ep2) || strings.Contains(name, ep3)) {
+			episodeOnlyMatches = append(episodeOnlyMatches, path)
+		}
+
+		if season >= 0 && (strings.Contains(name, ep2) || strings.Contains(name, ep3)) {
+			episodeOnlyMatches = append(episodeOnlyMatches, path)
 		}
 		return nil
 	})
 	if err != nil {
 		return "", err
 	}
-	if len(matches) == 0 {
+
+	if len(seasonMatches) > 0 {
+		sort.Strings(seasonMatches)
+		return seasonMatches[0], nil
+	}
+
+	if season >= 0 {
+		if len(episodeOnlyMatches) > 0 {
+			fmt.Printf("[WARN] No se encontro S%02dE%02d exacto; usando fallback por episodio en: %s\n", season, ep, filepath.Base(episodeOnlyMatches[0]))
+			sort.Strings(episodeOnlyMatches)
+			return episodeOnlyMatches[0], nil
+		}
 		return "", fmt.Errorf("not found")
 	}
 
-	sort.Strings(matches)
-	return matches[0], nil
+	if len(episodeOnlyMatches) == 0 {
+		return "", fmt.Errorf("not found")
+	}
+
+	sort.Strings(episodeOnlyMatches)
+	return episodeOnlyMatches[0], nil
 }
 
 func moveFile(src string, dst string) error {

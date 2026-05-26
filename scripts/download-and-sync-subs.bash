@@ -5,6 +5,7 @@ set -e
 SUBS_DIR="/data/media/subs"
 MEDIA_ROOT="/data/media"
 SYNC_ONLY=false
+MOVE_ONLY=false
 
 usage() {
 	echo "Uso:"
