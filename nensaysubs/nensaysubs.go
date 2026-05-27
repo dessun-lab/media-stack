@@ -1744,6 +1744,13 @@ func extractEpisodeNumberFromText(text string) int {
 		return 0
 	}
 
+	if m := regexp.MustCompile(`(?i)\bseason\s*([0-9]{1,2})\s*episode\s*([0-9]{1,3})\b`).FindStringSubmatch(text); len(m) >= 3 {
+		n, err := strconv.Atoi(m[2])
+		if err == nil {
+			return n
+		}
+	}
+
 	if m := regexp.MustCompile(`(?i)s\s*([0-9]{1,2})\s*e\s*([0-9]{1,3})`).FindStringSubmatch(text); len(m) >= 3 {
 		n, err := strconv.Atoi(m[2])
 		if err == nil {
@@ -1758,7 +1765,7 @@ func extractEpisodeNumberFromText(text string) int {
 		}
 	}
 
-	if m := regexp.MustCompile(`(?i)(?:episodio|ep|e)\D*([0-9]{1,3})`).FindStringSubmatch(text); len(m) >= 2 {
+	if m := regexp.MustCompile(`(?i)\b(?:episode|episodio|ep|e)\b\D*([0-9]{1,3})\b`).FindStringSubmatch(text); len(m) >= 2 {
 		n, err := strconv.Atoi(m[1])
 		if err == nil {
 			return n
@@ -2553,6 +2560,14 @@ func extractEpisodeRef(name string) (int, int, bool) {
 	cleanName = regexp.MustCompile(`\([^\)]*\)`).ReplaceAllString(cleanName, " ")
 	cleanName = strings.Join(strings.Fields(cleanName), " ")
 
+	if m := regexp.MustCompile(`(?i)\bseason\s*([0-9]{1,2})\s*episode\s*([0-9]{1,3})\b`).FindStringSubmatch(cleanName); len(m) >= 3 {
+		s, errS := strconv.Atoi(m[1])
+		e, errE := strconv.Atoi(m[2])
+		if errS == nil && errE == nil && e > 0 {
+			return s, e, true
+		}
+	}
+
 	// Common anime release style: "S2 - 02" / "S02 - 02".
 	reSdashEp := regexp.MustCompile(`(?i)\bs\s*([0-9]{1,2})\s*[-_. ]+\s*([0-9]{1,3})\b`)
 	if m := reSdashEp.FindStringSubmatch(cleanName); len(m) >= 3 {
@@ -2574,7 +2589,7 @@ func extractEpisodeRef(name string) (int, int, bool) {
 
 	rePatterns := []*regexp.Regexp{
 		regexp.MustCompile(`(?i)sub\D*([0-9]{1,3})`),
-		regexp.MustCompile(`(?i)(?:episodio|ep|e)\D*([0-9]{1,3})`),
+		regexp.MustCompile(`(?i)\b(?:episode|episodio|ep|e)\b\D*([0-9]{1,3})\b`),
 	}
 
 	for _, re := range rePatterns {
