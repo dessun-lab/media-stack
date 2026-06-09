@@ -323,6 +323,19 @@ services:
     stdin_open: true
     tty: true
 
+  makemkv:
+    image: makemkv:latest
+    container_name: makemkv
+    restart: "no"
+    network_mode: none
+    devices:
+      - /dev/sr0:/dev/sr0
+    environment:
+      - HOME=/config
+    volumes:
+      - /home/devops/runtime/arrstack/makemkv:/config
+      - /data/fast/qbittorrent/downloads:/downloads
+
 networks:
   arrnetwork:
     name: arrnet_managed
