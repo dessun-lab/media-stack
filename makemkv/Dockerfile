@@ -35,8 +35,8 @@ RUN cd "/tmp/makemkv-oss-${MAKEMKV_VERSION}" && \
     make install
 
 RUN cd "/tmp/makemkv-bin-${MAKEMKV_VERSION}" && \
-    make -j"$(nproc)" && \
-    printf "yes\n" | make install
+    yes yes | make -j"$(nproc)" && \
+    make install
 
 ENV HOME=/config
 
