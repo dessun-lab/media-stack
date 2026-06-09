@@ -328,8 +328,6 @@ services:
     container_name: makemkv
     restart: "no"
     network_mode: none
-    devices:
-      - /dev/sr0:/dev/sr0
     environment:
       - HOME=/config
     volumes:
