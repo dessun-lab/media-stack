@@ -294,7 +294,7 @@ services:
   nensaysubs:
     image: nensaysubs:latest
     container_name: nensaysubs
-    restart: unless-stopped
+    restart: "no"
     stdin_open: true
     tty: true
     depends_on:
