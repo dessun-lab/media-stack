@@ -232,6 +232,9 @@ services:
       - ND_SESSIONTIMEOUT=72h
       - ND_PROMETHEUS_ENABLED=true
       - ND_PROMETHEUS_METRICSPATH=/metrics
+      - ND_ENABLEUSEREDITING=false
+      - ND_EXTAUTH_TRUSTEDSOURCES=${ND_EXTAUTH_TRUSTEDSOURCES:-10.10.0.1/32}
+      - ND_EXTAUTH_USERHEADER=Remote-User
     volumes:
       - "/home/devops/runtime/arrstack/navidrome:/data"
       - "/home/devops/infra/arrstack/navidrome/music:/music:ro"
