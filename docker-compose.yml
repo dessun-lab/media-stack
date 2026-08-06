@@ -1,7 +1,7 @@
 services:
 
   jellyfin:
-    image: linuxserver/jellyfin:latest
+    image: linuxserver/jellyfin:10.11.11
     container_name: jellyfin
     restart: unless-stopped
     ports:
@@ -123,7 +123,7 @@ services:
       - /home/devops/runtime/arrstack/prowlarr:/config
 
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.0
     container_name: flaresolverr
     restart: unless-stopped
     network_mode: service:gluetun
@@ -141,7 +141,7 @@ services:
   # renames and organizes completed movies to media folder.
   # ============================================================
   radarr:
-    image: lscr.io/linuxserver/radarr:latest
+    image: lscr.io/linuxserver/radarr:version-6.3.0.10514
     container_name: radarr
     restart: unless-stopped
     ports:
@@ -164,7 +164,7 @@ services:
   # Same pattern as Radarr but for TV series.
   # ============================================================
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
+    image: lscr.io/linuxserver/sonarr:version-4.0.19.2979
     container_name: sonarr
     restart: unless-stopped
     ports:
@@ -184,7 +184,7 @@ services:
         
 
   jellyseerr:
-    image: ghcr.io/seerr-team/seerr:latest
+    image: ghcr.io/seerr-team/seerr:v3.4.0
     container_name: jellyseerr
     restart: unless-stopped
     ports:
@@ -201,7 +201,7 @@ services:
         ipv4_address: 172.18.0.7
 
   navidrome:
-    image: deluan/navidrome:latest
+    image: deluan/navidrome:0.63.2
     container_name: navidrome
     user: "${PUID}:${PGID}"
     restart: unless-stopped
