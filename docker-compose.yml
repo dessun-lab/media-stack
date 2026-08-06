@@ -177,6 +177,7 @@ services:
     volumes:
       - /home/devops/runtime/arrstack/sonarr:/config
       - /home/devops/runtime/arrstack/sonarr/tv:/tv
+      - /home/devops/runtime/arrstack/sonarr/shows:/shows
       - /home/devops/runtime/arrstack/sonarr/downloads:/data/downloads
     networks:
       arrnetwork:
