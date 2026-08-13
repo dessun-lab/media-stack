@@ -62,7 +62,7 @@ services:
   # ALL traffic goes through the VPN tunnel. No direct internet.
   # ============================================================
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
+    image: lscr.io/linuxserver/qbittorrent:5.2.3
     container_name: qbittorrent
     restart: unless-stopped
     network_mode: service:gluetun
