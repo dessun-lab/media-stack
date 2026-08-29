@@ -58,6 +58,32 @@ services:
         ipv4_address: 172.18.0.3
 
   # ============================================================
+  # GLUETUN SCRAPERS
+  # VPN independiente para NensaySubs y herramientas
+  # sensibles a geolocalización.
+  # ============================================================
+  gluetun_scrapers:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun_scrapers
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - /home/devops/runtime/arrstack/gluetun-scrapers:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=${SCRAPER_VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${SCRAPER_VPN_TYPE}
+      - WIREGUARD_PRIVATE_KEY=${SCRAPER_WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${SCRAPER_WIREGUARD_ADDRESSES}
+      - SERVER_COUNTRIES=${SCRAPER_SERVER_COUNTRIES}
+      - TZ=${TZ}
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.10
+
+  # ============================================================
   # QBITTORRENT — Torrent Client (runs through Gluetun VPN)
   # ALL traffic goes through the VPN tunnel. No direct internet.
   # ============================================================
@@ -131,6 +157,22 @@ services:
       gluetun:
         condition: service_healthy
         restart: true
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+
+  flaresolverr_subs:
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.0
+    container_name: flaresolverr_subs
+    restart: unless-stopped
+
+    network_mode: service:gluetun_scrapers
+
+    depends_on:
+      gluetun_scrapers:
+        condition: service_healthy
+        restart: true
+
     environment:
       - LOG_LEVEL=info
       - TZ=${TZ}
@@ -302,12 +344,12 @@ services:
     stdin_open: true
     tty: true
     depends_on:
-      gluetun:
+      gluetun_scrapers:
         condition: service_healthy
         restart: true
-      flaresolverr:
+      flaresolverr_subs:
         condition: service_started
-    network_mode: service:gluetun
+    network_mode: service:gluetun_scrapers
     environment:
       - TZ=${TZ}
       - NENSAYSUBS_OUTPUT_DIR=/data/media/subs
