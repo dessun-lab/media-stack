@@ -369,6 +369,7 @@ services:
   ffsubsync:
     image: ffsubsync:latest
     restart: "no"
+    network_mode: none
     container_name: ffsubsync
     volumes:
       - /data/media:/data/media
@@ -387,6 +388,9 @@ services:
       - /data/fast/qbittorrent/downloads:/downloads
 
 networks:
+  default:
+    name: arrnet_managed
+
   arrnetwork:
     name: arrnet_managed
     ipam:
