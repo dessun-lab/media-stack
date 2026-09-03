@@ -53,6 +53,8 @@ services:
       - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
       - SERVER_COUNTRIES=${SERVER_COUNTRIES}
       - TZ=${TZ}
+      - DNS_UPSTREAM_RESOLVER_TYPE=plain
+      - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1,8.8.8.8 
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.3
@@ -79,6 +81,8 @@ services:
       - WIREGUARD_ADDRESSES=${SCRAPER_WIREGUARD_ADDRESSES}
       - SERVER_COUNTRIES=${SCRAPER_SERVER_COUNTRIES}
       - TZ=${TZ}
+      - DNS_UPSTREAM_RESOLVER_TYPE=plain
+      - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1,8.8.8.8
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.10
