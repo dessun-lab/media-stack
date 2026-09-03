@@ -54,7 +54,7 @@ services:
       - SERVER_COUNTRIES=${SERVER_COUNTRIES}
       - TZ=${TZ}
       - DNS_UPSTREAM_RESOLVER_TYPE=plain
-      - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1,8.8.8.8 
+      - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1:53,8.8.8.8:53
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.3
