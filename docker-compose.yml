@@ -33,7 +33,7 @@ services:
   # Ports for those services are mapped HERE, not on the services.
   # ============================================================
   gluetun:
-    image: qmcgaw/gluetun:v3.41
+    image: qmcgaw/gluetun:v3.41.1
     container_name: gluetun
     restart: unless-stopped
     ports:
@@ -66,7 +66,7 @@ services:
   # sensibles a geolocalización.
   # ============================================================
   gluetun_scrapers:
-    image: qmcgaw/gluetun:v3.41
+    image: qmcgaw/gluetun:v3.41.1
     container_name: gluetun_scrapers
     restart: unless-stopped
     cap_add:
@@ -138,7 +138,7 @@ services:
   # Manages torrent indexers. Syncs to Radarr/Sonarr.
   # ============================================================
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest
+    image: lscr.io/linuxserver/prowlarr:version-2.5.2.5491
     container_name: prowlarr
     restart: unless-stopped
     network_mode: service:gluetun
@@ -233,7 +233,7 @@ services:
         
 
   jellyseerr:
-    image: ghcr.io/seerr-team/seerr:v3.4.0
+    image: ghcr.io/seerr-team/seerr:v3.4.1
     container_name: jellyseerr
     restart: unless-stopped
     ports:
