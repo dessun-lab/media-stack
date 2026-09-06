@@ -33,7 +33,7 @@ services:
   # Ports for those services are mapped HERE, not on the services.
   # ============================================================
   gluetun:
-    image: qmcgaw/gluetun:v3.41.1
+    image: qmcgaw/gluetun:v3.41.3
     container_name: gluetun
     restart: unless-stopped
     ports:
@@ -66,7 +66,7 @@ services:
   # sensibles a geolocalización.
   # ============================================================
   gluetun_scrapers:
-    image: qmcgaw/gluetun:v3.41.1
+    image: qmcgaw/gluetun:v3.41.3
     container_name: gluetun_scrapers
     restart: unless-stopped
     cap_add:
