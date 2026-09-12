@@ -22,9 +22,9 @@ services:
       - /home/devops/runtime/jellyfin/data/cache:/config/cache
       - /home/devops/runtime/jellyfin/data/transcode:/config/data/transcode
       - /home/devops/runtime/jellyfin/data/metadata:/config/data/metadata
-    
-      - /home/devops/infra/dessun-jellyfin-ui/artifacts/JellysunWebIntegration:/config/data/plugins/JellysunWebIntegration:ro
-      
+
+      - /home/devops/infra/dessun-jellyfin-ui/artifacts/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/JellysunWebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
+
       - /data/media:/data/media
     networks:
       arrnetwork:
