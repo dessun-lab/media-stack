@@ -1,0 +1,36 @@
+services:
+  jellyfin12:
+    image: lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50
+    container_name: jellyfin12
+    restart: "no"
+
+    ports:
+      - "${JELLYFIN_LOCAL_HOST}:8097:8096"
+
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+
+    devices:
+      - /dev/dri:/dev/dri
+
+    group_add:
+      - "${GID_VIDEO:-44}"
+      - "${GID_RENDER:-993}"
+
+    volumes:
+      - /home/devops/runtime/jellyfin12/config:/config
+      - /home/devops/runtime/jellyfin12/data/cache:/config/cache
+      - /home/devops/runtime/jellyfin12/data/transcode:/config/data/transcode
+      - /home/devops/runtime/jellyfin12/data/metadata:/config/data/metadata
+
+      # Same media as PROD, but physically read-only to this container.
+      - /data/media:/data/media:ro
+
+    # Optional safety while 12.1 is under test.
+    mem_limit: 2g
+
+    networks:
+      arrnetwork:
