@@ -33,4 +33,13 @@ services:
     mem_limit: 2g
 
     networks:
-      arrnetwork:
+      arrnetwork-canary:
+        ipv4_address: "172.19.0.2"
+
+networks:
+  arrnetwork-canary:
+    name: arrnetwork-canary
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
