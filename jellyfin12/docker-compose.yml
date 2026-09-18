@@ -30,8 +30,8 @@ services:
       - /data/media:/data/media:ro
 
       #PLUGINS
-      - /home/devops/infra/jellyfin12/dist/file-transformation/Jellyfin.Plugin.FileTransformation.dll:/config/data/plugins/FileTransformation/Jellyfin.Plugin.FileTransformation.dll:ro
-      - /home/devops/infra/jellyfin12/dist/jellysun-web-integration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/Jellysun.WebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
+      - /home/devops/infra/jellysun-ui/dist/file-transformation/Jellyfin.Plugin.FileTransformation.dll:/config/data/plugins/FileTransformation/Jellyfin.Plugin.FileTransformation.dll:ro
+      - /home/devops/infra/jellysun-ui/dist/jellysun-web-integration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/Jellysun.WebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
 
     # Optional safety while 12.1 is under test.
     mem_limit: 2g
