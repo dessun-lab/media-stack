@@ -1,7 +1,38 @@
 services:
 
+  # jellyfin:
+  #   image: linuxserver/jellyfin:10.11.11
+  #   container_name: jellyfin
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${JELLYFIN_HOST}:8096:8096"
+  #     - "${JELLYFIN_LOCAL_HOST}:8096:8096"
+  #   environment:
+  #     - PUID=${PUID}
+  #     - PGID=${PGID}
+  #     - UMASK=002
+  #     - TZ=${TZ}
+  #   devices:
+  #     - /dev/dri:/dev/dri
+  #   group_add:
+  #     - "${GID_VIDEO:-44}"
+  #     - "${GID_RENDER:-993}"
+  #   volumes:
+  #     - /home/devops/runtime/jellyfin/config:/config
+  #     - /home/devops/runtime/jellyfin/data/cache:/config/cache
+  #     - /home/devops/runtime/jellyfin/data/transcode:/config/data/transcode
+  #     - /home/devops/runtime/jellyfin/data/metadata:/config/data/metadata
+
+  #     - /home/devops/infra/dessun-jellyfin-ui/dist/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/JellysunWebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
+
+  #     - /data/media:/data/media
+  #   networks:
+  #     arrnetwork:
+  #       ipv4_address: 172.18.0.2
+
+
   jellyfin:
-    image: linuxserver/jellyfin:10.11.11
+    image: lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50
     container_name: jellyfin
     restart: unless-stopped
     ports:
@@ -18,17 +49,23 @@ services:
       - "${GID_VIDEO:-44}"
       - "${GID_RENDER:-993}"
     volumes:
-      - /home/devops/runtime/jellyfin/config:/config
-      - /home/devops/runtime/jellyfin/data/cache:/config/cache
-      - /home/devops/runtime/jellyfin/data/transcode:/config/data/transcode
-      - /home/devops/runtime/jellyfin/data/metadata:/config/data/metadata
+      - /home/devops/runtime/jellysun/config:/config
+      - /home/devops/runtime/jellysun/data/cache:/config/cache
+      - /home/devops/runtime/jellysun/data/transcode:/config/data/transcode
+      - /home/devops/runtime/jellysun/data/metadata:/config/data/metadata
 
-      - /home/devops/infra/dessun-jellyfin-ui/dist/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/JellysunWebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
+      # Same media as PROD, but physically read-only to this container.
+      - /data/media:/data/media:ro
 
-      - /data/media:/data/media
+      #PLUGINS
+      - /home/devops/infra/jellysun-ui/dist/file-transformation/Jellyfin.Plugin.FileTransformation.dll:/config/data/plugins/FileTransformation/Jellyfin.Plugin.FileTransformation.dll:ro
+      - /home/devops/infra/jellysun-ui/dist/jellysun-web-integration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/Jellysun.WebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
+
     networks:
       arrnetwork:
         ipv4_address: 172.18.0.2
+
+
 
   # ============================================================
   # GLUETUN — VPN Container (kill switch + tunnel)
