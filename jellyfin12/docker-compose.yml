@@ -21,10 +21,10 @@ services:
       - "${GID_RENDER:-993}"
 
     volumes:
-      - /home/devops/runtime/jellyfin12/config:/config
-      - /home/devops/runtime/jellyfin12/data/cache:/config/cache
-      - /home/devops/runtime/jellyfin12/data/transcode:/config/data/transcode
-      - /home/devops/runtime/jellyfin12/data/metadata:/config/data/metadata
+      - /home/devops/runtime/jellysun/config:/config
+      - /home/devops/runtime/jellysun/data/cache:/config/cache
+      - /home/devops/runtime/jellysun/data/transcode:/config/data/transcode
+      - /home/devops/runtime/jellysun/data/metadata:/config/data/metadata
 
       # Same media as PROD, but physically read-only to this container.
       - /data/media:/data/media:ro
