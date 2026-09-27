@@ -290,7 +290,7 @@ services:
         ipv4_address: 172.18.0.7
 
   navidrome:
-    image: deluan/navidrome:0.64.0
+    image: deluan/navidrome:0.64.2
     container_name: navidrome
     user: "${PUID}:${PGID}"
     restart: unless-stopped
