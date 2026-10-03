@@ -54,8 +54,7 @@ services:
       - /home/devops/runtime/jellysun/data/transcode:/config/data/transcode
       - /home/devops/runtime/jellysun/data/metadata:/config/data/metadata
 
-      # Same media as PROD, but physically read-only to this container.
-      - /data/media:/data/media:ro
+      - /data/media:/data/media
 
       #PLUGINS
       - /home/devops/infra/jellysun-ui/dist/file-transformation/Jellyfin.Plugin.FileTransformation.dll:/config/data/plugins/FileTransformation/Jellyfin.Plugin.FileTransformation.dll:ro
