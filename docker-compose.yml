@@ -272,7 +272,7 @@ services:
         
 
   jellyseerr:
-    image: ghcr.io/seerr-team/seerr:3.5.0
+    image: ghcr.io/seerr-team/seerr:v3.5.0
     container_name: jellyseerr
     restart: unless-stopped
     ports:
