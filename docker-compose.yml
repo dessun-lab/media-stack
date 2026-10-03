@@ -133,7 +133,7 @@ services:
   # ALL traffic goes through the VPN tunnel. No direct internet.
   # ============================================================
   qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:5.2.3
+    image: lscr.io/linuxserver/qbittorrent:5.2.4_v2.0.15-ls479
     container_name: qbittorrent
     restart: unless-stopped
     network_mode: service:gluetun
@@ -272,7 +272,7 @@ services:
         
 
   jellyseerr:
-    image: ghcr.io/seerr-team/seerr:v3.4.1
+    image: ghcr.io/seerr-team/seerr:3.5.0
     container_name: jellyseerr
     restart: unless-stopped
     ports:
