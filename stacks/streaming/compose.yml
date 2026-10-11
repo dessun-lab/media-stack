@@ -37,7 +37,7 @@ services:
   # shares writable state and must not run concurrently without isolation.
   # ============================================================
   jellyfin:
-    image: lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50
+    image: lscr.io/linuxserver/jellyfin:12.2ubu2604-ls53
     container_name: jellyfin
     restart: unless-stopped
     ports:

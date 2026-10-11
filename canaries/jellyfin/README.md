@@ -1,8 +1,9 @@
 # Reusable Jellyfin migration canary
 
 **Status: INACTIVE — not currently deployed.** Luis confirms the prior Jellyfin
-migration completed and the former canary was disabled. Production already uses
-the migrated current image, `lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50`.
+migration completed and the former canary was disabled. Its retained migration
+baseline is `lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50`. The current production
+declaration is maintained separately in the [version inventory](../../docs/versions.md).
 
 [Compose](compose.yml) was moved unchanged from `jellyfin12/docker-compose.yml`.
 [MIGRATIONS.md](MIGRATIONS.md) owns historical evidence; [canary rules](../README.md)

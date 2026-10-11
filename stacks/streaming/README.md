@@ -19,7 +19,8 @@ media and plugin failures can still cross stack boundaries.
   groups and read-only plugin DLLs from sibling `jellysun-ui/dist`. Config/cache/
   transcode/metadata stay under `/home/devops/runtime/jellysun`; media remains
   intentionally writable (history `20c4e96`). Literal image tag
-  `12.1ubu2604-ls50` is preserved; do not normalize its version identity.
+  `12.2ubu2604-ls53` is declared per Luis's version-update request; deployment
+  of this tag remains a separate operator action.
 - Navidrome retains `172.18.0.8`, port 4533, `${PUID}:${PGID}` and runtime state
   under `/home/devops/runtime/arrstack/navidrome`. Its read-only music bind now
   uses `/home/devops/infra/media-stack/navidrome/music`; this server-only data
@@ -34,7 +35,7 @@ media and plugin failures can still cross stack boundaries.
 
 | Service | Image | Version / tag |
 | --- | --- | --- |
-| `jellyfin` | `lscr.io/linuxserver/jellyfin` | `12.1ubu2604-ls50` |
+| `jellyfin` | `lscr.io/linuxserver/jellyfin` | `12.2ubu2604-ls53` |
 | `navidrome` | `deluan/navidrome` | `0.64.2` |
 
 Declared tags from [Compose](compose.yml); [central versions](../../docs/versions.md)

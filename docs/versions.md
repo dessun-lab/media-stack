@@ -23,7 +23,7 @@ The application column comes from the dated fleet inventory, not image-tag infer
 
 | Service | Owner / declaration source | Image identity | Declared tag | Fleet application version | Comparison / uncertainty |
 | --- | --- | --- | --- | --- | --- |
-| `jellyfin` | [streaming](../stacks/streaming/compose.yml) | `lscr.io/linuxserver/jellyfin` | `12.1ubu2604-ls50` | `12.1` | Literal tag and inventory label retained; no inferred upstream renumbering. |
+| `jellyfin` | [streaming](../stacks/streaming/compose.yml) | `lscr.io/linuxserver/jellyfin` | `12.2ubu2604-ls53` | `12.1` | Luis-authorized declaration update; dated fleet still records `12.1ubu2604-ls50`. Deployment of the new tag is not asserted. |
 | `navidrome` | [streaming](../stacks/streaming/compose.yml) | `deluan/navidrome` | `0.64.2` | `0.64.2` | Same declared image/tag; dated observation. |
 | `radarr` | [management](../stacks/management/compose.yml) | `lscr.io/linuxserver/radarr` | `6.4.4.10685-ls317` | `6.4.4.10685` | Same declared image/tag; dated observation. |
 | `sonarr` | [management](../stacks/management/compose.yml) | `lscr.io/linuxserver/sonarr` | `4.0.20.3014-ls325` | `4.0.20.3014` | Same declared image/tag; dated observation. |
@@ -41,7 +41,10 @@ The application column comes from the dated fleet inventory, not image-tag infer
 | `nensaysubs` | [subtitles](../stacks/subtitles/compose.yml) | `nensaysubs` | `latest` | N/A | Same custom mutable tag; deployed source/app version unrecorded. |
 | `ffsubsync` | [subtitles](../stacks/subtitles/compose.yml) | `ffsubsync` | `latest` | Not inventoried | No dated fleet row; exact deployed tool version remains unrecorded. |
 
-All 15 retained services present in fleet inventory have matching image/tag strings.
+Of 15 retained services present in fleet inventory, 14 image/tag strings match.
+Jellyfin now declares `12.2ubu2604-ls53` per Luis's 2026-10-11 request; the dated
+fleet records `12.1ubu2604-ls50` / application `12.1`. No new application version
+or deployed digest was independently established.
 FFsubsync and MakeMKV have no entries; their recipes are evidence below, not proof
 of deployed versions. Fleet still lists `qmcgaw/deunhealth:latest` with application
 `latest @ 37e5bd4`, while the applied restructuring removed it and Luis confirms
@@ -61,8 +64,9 @@ action or proof of a remaining production container. No inventory was edited.
 qBittorrent also declares `ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest` as its
 Docker mod. This remote mutable dependency is preserved; the removed local bundle
 was version `2.33.0` and is not a statement of the remote mod's current version.
-The inactive [Jellyfin canary](../canaries/jellyfin/compose.yml) retains the same
-literal Jellyfin image/tag as production; see its migration log for history.
+The inactive [Jellyfin canary](../canaries/jellyfin/compose.yml) retains historical
+`lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50`; it does not follow production
+version updates automatically. See its migration log for history.
 
 ## Maintenance
 

@@ -8,6 +8,12 @@ four production stacks are operational after cutover. This audit inspected sourc
 not Portainer, Docker, host state or application settings. A missing Compose option
 is not proof that a mounted configuration or external proxy lacks that setting.
 
+**Subsequent authorized version edit (2026-10-11):** production Jellyfin now
+declares `12.2ubu2604-ls53`. This audit and its validation results retain the
+pre-update `12.1ubu2604-ls50` baseline; they are not a feature/compatibility review
+of the new tag. See [current version evidence](../versions.md). No audit
+recommendation was implemented by that separate version edit.
+
 ## Evidence and version limits
 
 Baseline: local Media Stack `162131b`; all four Compose files, local recipes,
