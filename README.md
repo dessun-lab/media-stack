@@ -17,6 +17,20 @@ the last operator-confirmed deployment was one stack, pending Luis's cutover.
 GitHub Actions separately synchronizes a server checkout for host workflows and
 manual builds; Portainer does not deploy from that checkout.
 
+## Prerequisite: shared network
+
+Before deploying any production stack, Luis must ensure the USER-owned external
+network `arrnet_managed` exists on the target Docker host. If absent, provision it
+once:
+
+```bash
+docker network create --subnet 172.18.0.0/16 arrnet_managed
+```
+
+Reuse the existing network; preserve it across stack removal. See
+[shared networking](docs/operations/networking.md) for evidence, static addresses
+and lifecycle/cutover responsibilities.
+
 ## Find your way
 
 - [Documentation map](docs/README.md): current architecture and operations.

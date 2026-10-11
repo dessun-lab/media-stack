@@ -29,7 +29,7 @@ Exact membership belongs in each stack README, not duplicated across manuals.
 ```text
 README.md / CONTRIBUTING.md / AGENTS.md
 docs/{README,architecture,evidence,versions}.md
-docs/operations/{deployment,synchronization,subtitles}.md
+docs/operations/{deployment,networking,synchronization,subtitles}.md
 docs/design/{restructuring,production-units,network-and-variables,implementation-handoff,canaries}.md
 docs/tools/README.md
 .agents/skills/{route-model-fit,optimize-agent-budget,execute-orchestrated-brief}/SKILL.md

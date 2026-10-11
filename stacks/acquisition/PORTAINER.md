@@ -9,6 +9,8 @@
 | **Compose file path** | `stacks/acquisition/compose.yml` |
 | **Environment contract** | [stacks/acquisition/.env.example](.env.example) |
 | **Shared network** | Existing external `arrnet_managed` |
+| **Network lifecycle** | Externally managed shared host infrastructure / Luis (USER-owned) |
+| **Network prerequisite** | Must exist before deployment; [provisioning](../../docs/operations/networking.md) |
 | **Operator** | Luis / USER-owned |
 
 Documentation only. Luis supplies values and owns all Portainer operations,

@@ -22,6 +22,13 @@ and blank variable contract. No credential/URL or active environment is document
 | Manual custom-image build | Luis produces a tool image/tag; this is not deployment. |
 | Portainer update/cutover | Luis selects units, transfers ownership and validates runtime. |
 
+## Shared network prerequisite
+
+All four production units require the externally managed, USER-owned
+`arrnet_managed` before deployment. Luis provisions it once if absent and preserves
+it through stack removal. The [networking authority](networking.md) supplies the
+creation command, historical subnet evidence and static-address contract.
+
 ## Secondary local use
 
 There is no root Compose startup path. A prepared operator selects one unit, for

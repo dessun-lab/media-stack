@@ -28,27 +28,12 @@ besides `name` are invalid. This transfers lifecycle responsibility outside the
 projects, not addressing or connectivity.
 [Docker network reference](https://docs.docker.com/reference/compose-file/networks/#external).
 
-| Existing static address | Service | Owner |
-| --- | --- | --- |
-| `172.18.0.2` | `jellyfin` | streaming |
-| `172.18.0.3` | `gluetun` | acquisition |
-| `172.18.0.4` | `radarr` | management |
-| `172.18.0.5` | `sonarr` | management |
-| `172.18.0.7` | `jellyseerr` | management |
-| `172.18.0.8` | `navidrome` | streaming |
-| `172.18.0.9` | `lidarr` | management |
-| `172.18.0.10` | `gluetun_scrapers` | subtitles |
-
-No new network, subnet, DNS alias, static address or VPN identity is proposed.
-Namespace consumers retain their owner's interface; `none` services remain
-unattached. The disabled canary's network is outside this production contract.
-
-**Luis's cutover responsibility:** preserve/ensure the existing `arrnet_managed`
-network with compatible current subnet/address allocation before activating new
-units. Prevent removal of that network while retiring the old project; if absent,
-provisioning the same contract is an operator prerequisite. Transfer fixed names,
-IPs and state ownership once, without concurrent old/new owners. Agents need no
-runtime network inspection to implement these repository declarations.
+The operational authority is [shared networking](../operations/networking.md):
+it owns the provisioning command, historical parameters, static-address inventory
+and Luis's lifecycle/cutover responsibilities. No new network, subnet, DNS alias,
+static address or VPN identity is introduced. Namespace consumers retain their
+owner's interface; `none` services remain unattached. The disabled canary is
+outside this production contract.
 
 ## One blank variable template per unit
 

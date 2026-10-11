@@ -12,6 +12,7 @@ layout is implemented here, with publication and runtime cutover still Luis-owne
 | Portainer name/path metadata and variable contracts | Each unit's `PORTAINER.md` and blank `.env.example` |
 | Version provenance, fleet comparison and discrepancies | [Versions](versions.md) |
 | Portainer authority and secondary local operation | [Deployment](operations/deployment.md) |
+| Shared network provisioning, static addresses and lifecycle | [Networking](operations/networking.md) |
 | Actions → SSH → server checkout | [Synchronization](operations/synchronization.md) |
 | Cross-tool subtitle workflow | [Subtitle operation](operations/subtitles.md) |
 | Tool source and manual builds | [Tool index](tools/README.md), then tool-local READMEs |

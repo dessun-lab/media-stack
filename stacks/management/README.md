@@ -43,8 +43,10 @@ owns provenance, fleet comparison and uncertainty.
 
 ## Shared contracts
 
-Use the existing external `arrnet_managed`; preserve declared IPs and names.
-Luis owns network preparation, Portainer activation and runtime validation.
+**Prerequisite:** shared network `arrnet_managed` must exist before deployment.
+Its lifecycle is externally managed / USER-owned by Luis; preserve declared IPs
+and names. See [network provisioning](../../docs/operations/networking.md).
+Luis owns Portainer activation and runtime validation.
 See [architecture](../../docs/architecture.md),
 [network/variable rules](../../docs/design/network-and-variables.md) and
 [cutover handoff](../../docs/design/implementation-handoff.md).
