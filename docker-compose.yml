@@ -141,8 +141,6 @@ services:
       gluetun:
         condition: service_healthy
         restart: true
-    labels:
-      - deunhealth.restart.on.unhealthy=true
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
@@ -156,22 +154,6 @@ services:
       - /home/devops/runtime/arrstack/qbittorrent/temp:/temp
       - /home/devops/runtime/arrstack/qbittorrent/watch:/watch
     
-  # ============================================================
-  # DEUNHEALTH — Auto-restarts unhealthy containers
-  # If qBittorrent loses VPN, this restarts it automatically.
-  # ============================================================
-  deunhealth:
-    image: qmcgaw/deunhealth
-    container_name: deunhealth
-    restart: always
-    network_mode: none
-    environment:
-      - LOG_LEVEL=info
-      - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
-      - TZ=${TZ}
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-
   # ============================================================
   # PROWLARR — Indexer Manager (runs through Gluetun VPN)
   # Manages torrent indexers. Syncs to Radarr/Sonarr.
