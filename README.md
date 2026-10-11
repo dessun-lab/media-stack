@@ -1,29 +1,36 @@
-# ARR Stack
+# Media Stack
 
-Automated media server with VPN protection. All download traffic routes through Gluetun — if the VPN drops, all traffic stops.
+`dessun-lab/media-stack` owns Luis's media service definitions and operational
+tools: video/music streaming, library automation and requests, VPN-backed media
+acquisition, subtitle workflows and manually built tool images.
 
-Based on [Tom Spark's ARR Stack](https://github.com/loponai/arrstack).
+Production repository authority is split into four independent units:
+[streaming](stacks/streaming/README.md), [management](stacks/management/README.md),
+[acquisition](stacks/acquisition/README.md), [subtitles](stacks/subtitles/README.md).
+They retain the shared `arrnet_managed` network and two distinct VPN namespaces.
+There is no root aggregate Compose file.
 
-## Components
+**Luis operates production through Portainer connected directly to GitHub.**
+Each unit includes compact PORTAINER.md metadata and a blank `.env.example` for
+his configuration. Repository restructuring does not mean deployment occurred;
+the last operator-confirmed deployment was one stack, pending Luis's cutover.
+GitHub Actions separately synchronizes a server checkout for host workflows and
+manual builds; Portainer does not deploy from that checkout.
 
-The Compose stack includes Jellyfin, qBittorrent, Prowlarr, Radarr, Sonarr,
-Lidarr, Jellyseerr, Navidrome, Gluetun and helper services for subtitles,
-scraping and media processing. Services that download or scrape use
-`network_mode: service:gluetun` or the dedicated scraper VPN container.
+## Find your way
 
-The subdirectories `ffsubsync/`, `makemkv/`, `nensaysubs/`, `vuetorrent/` and
-`yt-dlp/` contain supporting build or configuration files for local images.
+- [Documentation map](docs/README.md): current architecture and operations.
+- [Version inventory](docs/versions.md): declared tags, fleet evidence and uncertainty.
+- [Tools](docs/tools/README.md): locally owned utilities and manual build notes.
+- [Canaries](canaries/README.md): temporary migrations; Jellyfin is INACTIVE.
+- [Implementation record](docs/design/restructuring.md) and
+  [Luis's handoff](docs/design/implementation-handoff.md).
+- [CONTRIBUTING.md](CONTRIBUTING.md): contribution and maintenance rules.
+- [AGENTS.md](AGENTS.md): agent authority, effect limits and protected files.
 
-## Usage
+Local Compose use is secondary operator support, not a portable development
+setup: definitions retain server-specific binds, names, devices and addresses.
+See [deployment](docs/operations/deployment.md). Custom images remain manually
+built by Luis. Agents never read or implicitly load the protected root `.env`.
 
-Configure the required values in `.env`, then start the stack from this
-directory:
-
-```bash
-docker compose up -d
-docker compose ps
-```
-
-Review the Gluetun and Compose network settings before exposing services. The
-stack uses persistent host paths declared in `docker-compose.yml`, so those
-paths must exist on the deployment host.
+Originally based on [Tom Spark's ARR Stack](https://github.com/loponai/arrstack).
