@@ -2,7 +2,7 @@ services:
 
   # ============================================================
   # GLUETUN — VPN Container (kill switch + tunnel)
-  # All VPN-protected services route through this container.
+  # Acquisition VPN consumers route through this container.
   # Ports for those services are mapped HERE, not on the services.
   # ============================================================
   gluetun:
@@ -35,7 +35,7 @@ services:
 
   # ============================================================
   # QBITTORRENT — Torrent Client (runs through Gluetun VPN)
-  # ALL traffic goes through the VPN tunnel. No direct internet.
+  # Shares Gluetun's network namespace and waits for its VPN healthcheck.
   # ============================================================
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:5.2.4_v2.0.15-ls479
@@ -80,6 +80,10 @@ services:
     volumes:
       - /home/devops/runtime/arrstack/prowlarr:/config
 
+  # ============================================================
+  # FLARESOLVERR — Browser challenge solver for indexer access
+  # Shares Gluetun with Prowlarr; its API is reachable over their loopback.
+  # ============================================================
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
     container_name: flaresolverr
@@ -93,6 +97,10 @@ services:
       - LOG_LEVEL=info
       - TZ=${TZ}
 
+  # ============================================================
+  # YT-DLP — Manually invoked media download tool
+  # Kept available for interactive commands in the main VPN namespace.
+  # ============================================================
   ytdlp:
     image: ytdlp:latest
     container_name: ytdlp
@@ -110,6 +118,10 @@ services:
     command: "tail -f /dev/null"
     restart: unless-stopped
 
+  # ============================================================
+  # THEMEARR — Theme retrieval tool (externally owned image)
+  # Shares Gluetun; its CLI interface port is published by Gluetun.
+  # ============================================================
   themearr:
     image: themearr:latest
     container_name: themearr
@@ -126,6 +138,10 @@ services:
     volumes:
       - /home/devops/runtime/arrstack/themearr/AnimeThemes:/data/anime
 
+  # ============================================================
+  # MAKEMKV — On-demand media conversion tool
+  # No network; operates on the acquisition download tree.
+  # ============================================================
   makemkv:
     image: makemkv:latest
     container_name: makemkv

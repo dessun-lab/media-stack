@@ -1,4 +1,8 @@
 services:
+  # ============================================================
+  # JELLYFIN CANARY — Retained, inactive migration scenario
+  # Shares writable production state; requires isolation before future activation.
+  # ============================================================
   jellyfin12:
     image: lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50
     container_name: jellyfin12
@@ -33,7 +37,7 @@ services:
       - /home/devops/infra/jellysun-ui/dist/file-transformation/Jellyfin.Plugin.FileTransformation.dll:/config/data/plugins/FileTransformation/Jellyfin.Plugin.FileTransformation.dll:ro
       - /home/devops/infra/jellysun-ui/dist/jellysun-web-integration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/Jellysun.WebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
 
-    # Optional safety while 12.1 is under test.
+    # Historical optional limit; the completed migration scenario is inactive.
     # mem_limit: 2g
 
     networks:

@@ -1,9 +1,8 @@
 services:
 
   # ============================================================
-  # GLUETUN SCRAPERS
-  # VPN independiente para NensaySubs y herramientas
-  # sensibles a geolocalización.
+  # GLUETUN SCRAPERS — Dedicated subtitle VPN namespace
+  # NensaySubs and its FlareSolverr share this tunnel and loopback.
   # ============================================================
   gluetun_scrapers:
     image: qmcgaw/gluetun:v3.41.3
@@ -29,6 +28,10 @@ services:
       arrnetwork:
         ipv4_address: 172.18.0.10
 
+  # ============================================================
+  # FLARESOLVERR SUBS — Subtitle browser challenge solver
+  # Shares the scraper VPN namespace with NensaySubs.
+  # ============================================================
   flaresolverr_subs:
     image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
     container_name: flaresolverr_subs
@@ -45,6 +48,10 @@ services:
       - LOG_LEVEL=info
       - TZ=${TZ}
 
+  # ============================================================
+  # NENSAYSUBS — Manually operated subtitle acquisition and placement
+  # Shares the scraper VPN and reaches its solver over loopback; writes media.
+  # ============================================================
   nensaysubs:
     image: nensaysubs:latest
     container_name: nensaysubs
@@ -68,6 +75,10 @@ services:
       - /home/devops/runtime/arrstack/nensaysubs:/runtime
       - /data/media:/data/media
 
+  # ============================================================
+  # FFSUBSYNC — On-demand subtitle alignment tool
+  # Host workflow invokes one-off runs; writes media without network access.
+  # ============================================================
   ffsubsync:
     image: ffsubsync:latest
     restart: "no"

@@ -48,6 +48,10 @@ services:
       arrnetwork:
         ipv4_address: 172.18.0.5
 
+  # ============================================================
+  # LIDARR — Music library manager (not behind VPN)
+  # Uses acquisition services through application-level integrations.
+  # ============================================================
   lidarr:
     image: lscr.io/linuxserver/lidarr:latest
     container_name: lidarr
@@ -69,6 +73,10 @@ services:
 
 
 
+  # ============================================================
+  # SEERR — Media requests and library integration
+  # Service/container name remains jellyseerr; connects to managers and Jellyfin.
+  # ============================================================
   jellyseerr:
     image: ghcr.io/seerr-team/seerr:v3.5.0
     container_name: jellyseerr

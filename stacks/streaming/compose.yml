@@ -31,6 +31,11 @@ services:
   #       ipv4_address: 172.18.0.2
 
 
+  # ============================================================
+  # JELLYFIN — Video streaming server
+  # Uses host GPU devices and external plugin DLLs; the inactive canary
+  # shares writable state and must not run concurrently without isolation.
+  # ============================================================
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50
     container_name: jellyfin
@@ -64,6 +69,9 @@ services:
       arrnetwork:
         ipv4_address: 172.18.0.2
 
+  # ============================================================
+  # NAVIDROME — Music streaming server
+  # ============================================================
   navidrome:
     image: deluan/navidrome:0.64.2
     container_name: navidrome
