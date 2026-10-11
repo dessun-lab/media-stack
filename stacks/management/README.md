@@ -6,7 +6,8 @@ Coordinate media libraries and requests independently of serving and VPN mainten
 
 [Compose](compose.yml) owns exact configuration. [PORTAINER metadata](PORTAINER.md)
 and the blank [environment contract](.env.example) are Luis's configuration handoff.
-This is repository authority; deployment/cutover has not been performed here.
+Luis confirms this production stack is operational after cutover (operator update
+recorded 2026-10-11); runtime operations remain his responsibility.
 
 These four services own requests and movie/series/music library automation.
 They have independent bridge interfaces and no Compose startup dependencies.
@@ -25,7 +26,7 @@ Runtime prefix is `/home/devops/runtime`; all services retain `unless-stopped`.
 Exact image tags and mount modes belong to Compose. Inventory dated 2026-10-03
 records Lidarr `3.1.0.4875` (`ls26`) behind the mutable `latest` tag, not a source pin.
 Managers use Prowlarr/qBittorrent through application configuration. Preserve
-endpoints/credentials and request-to-streaming integration at Luis's cutover;
+endpoints/credentials and request-to-streaming integration during maintenance;
 these relationships do not require a common Compose project. Separate mount
 sources do not prove shared downloads, aliases or hardlink behavior.
 
@@ -43,10 +44,11 @@ owns provenance, fleet comparison and uncertainty.
 
 ## Shared contracts
 
-**Prerequisite:** shared network `arrnet_managed` must exist before deployment.
+**Shared infrastructure:** `arrnet_managed` is provisioned and in use per Luis.
+It must remain available before any future deployment/recreation.
 Its lifecycle is externally managed / USER-owned by Luis; preserve declared IPs
 and names. See [network provisioning](../../docs/operations/networking.md).
 Luis owns Portainer activation and runtime validation.
 See [architecture](../../docs/architecture.md),
 [network/variable rules](../../docs/design/network-and-variables.md) and
-[cutover handoff](../../docs/design/implementation-handoff.md).
+[completed migration record](../../docs/design/implementation-handoff.md).

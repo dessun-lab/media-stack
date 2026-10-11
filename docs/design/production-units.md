@@ -2,7 +2,8 @@
 
 [Design overview](restructuring.md)
 
-Approved 2026-10-11. Exact membership and service-specific knowledge belong to
+Approved 2026-10-11 and operational per Luis's subsequent cutover confirmation.
+Exact membership and service-specific knowledge belong to
 [streaming](../../stacks/streaming/README.md),
 [management](../../stacks/management/README.md),
 [acquisition](../../stacks/acquisition/README.md) and
@@ -27,7 +28,8 @@ and its sole qBittorrent integration label are explicitly removed by Luis.
 
 Keep VPN owners with all `network_mode: service:` consumers and `depends_on`
 edges inside their unit. Preserve image/tag, names, commands, defaults, bind modes,
-ports, IPs, UID/GID, devices/plugins, restart/health behavior and comments/style.
+ports, IPs, UID/GID, devices/plugins and restart/health behavior. The post-cutover
+annotation task changes comments only, preserving service order and semantics.
 The allowed differences are enumerated in the [design](restructuring.md).
 
 Shared media, network and host resources remain cross-unit coupling. The split

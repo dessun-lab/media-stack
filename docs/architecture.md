@@ -4,8 +4,10 @@
 
 The repository declares **17 production services in four independent Compose
 units**. Membership and service details belong to the stack READMEs linked from
-the documentation map. Runtime deployment has not been changed by this task:
-Luis last reported one Portainer stack and will perform the four-unit cutover.
+the documentation map. **All four units are operational**, per Luis's successful
+cutover report recorded 2026-10-11. He removed the monolithic stack, provisioned
+the shared network and populated Portainer variables. Runtime status is Luis's
+operator evidence; agents did not inspect it.
 
 ```mermaid
 flowchart LR
@@ -31,7 +33,7 @@ inside its unit. Streaming and management have their own bridge interfaces.
 All production units reference existing external `arrnet_managed`; eight static
 addresses are unchanged. The old duplicate default alias and project-owned IPAM
 were replaced solely to share this network across independent projects. Luis
-preserves/prepares the actual network. See [network contract](design/network-and-variables.md).
+provisioned and maintains the actual network. See [network operations](operations/networking.md).
 Application endpoints and shared host files may still couple units operationally;
 independent update boundaries do not guarantee immunity from host/storage failures.
 
@@ -41,8 +43,8 @@ independent update boundaries do not guarantee immunity from host/storage failur
 | `/home/devops/runtime/jellysun/*` | Production Jellyfin and retained inactive canary overlap in writable config/cache/transcode/metadata. Canary requires deliberate isolation before concurrent use. |
 | `/data/fast/qbittorrent` | qBittorrent mounts this as `/data`; MakeMKV uses its downloads child. |
 | Distinct manager/tool runtime paths | Retained exactly. Do not infer host aliases, remote-path mappings or hardlink behavior. |
-| `/home/devops/infra/media-stack/navidrome/music` | New checkout-prefix bind, read-only music; server-only data must be prepared by Luis. |
-| `/home/devops/infra/media-stack/yt-dlp/cookies.txt` | New checkout-prefix bind, unchanged subpath; cookie data does not follow the recipe into `tools/`. |
+| `/home/devops/infra/media-stack/navidrome/music` | Current checkout-prefix bind, read-only music; server-only data remains Luis-owned. |
+| `/home/devops/infra/media-stack/yt-dlp/cookies.txt` | Current checkout-prefix bind, unchanged subpath; cookie data does not follow the recipe into `tools/`. |
 | `/home/devops/infra/jellysun-ui/dist/*` | Existing external plugin DLL binds unchanged. |
 
 All persisted mounts remain binds, not named volumes. Runtime paths under

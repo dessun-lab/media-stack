@@ -12,6 +12,10 @@ Fleet evidence: read-only `homelab-inventory/homelab-inventory.md`, commit
 from repository declarations and are not a fresh runtime inspection. No image
 digest was queried. `latest` is mutable, and `N/A` does not establish an app version.
 
+Luis confirms production is operational after cutover (update recorded 2026-10-11).
+That report establishes deployment status, not newly measured app versions or
+custom-image digests. The dated fleet snapshot remains unchanged.
+
 ## Production declarations and fleet comparison
 
 The owner links are the exact Compose sources for all **17 retained services**.
@@ -31,18 +35,18 @@ The application column comes from the dated fleet inventory, not image-tag infer
 | `flaresolverr` | [acquisition](../stacks/acquisition/compose.yml) | `ghcr.io/flaresolverr/flaresolverr` | `v3.5.2` | `3.5.2` | Same declared image/tag; dated observation. |
 | `ytdlp` | [acquisition](../stacks/acquisition/compose.yml) | `ytdlp` | `latest` | N/A | Same custom mutable tag; deployed source/app version unrecorded. |
 | `themearr` | [acquisition](../stacks/acquisition/compose.yml) | `themearr` | `latest` | N/A | Same custom mutable tag; deployed source/app version unrecorded. |
-| `makemkv` | [acquisition](../stacks/acquisition/compose.yml) | `makemkv` | `latest` | Not inventoried | No fleet row; runtime presence/version not established. |
+| `makemkv` | [acquisition](../stacks/acquisition/compose.yml) | `makemkv` | `latest` | Not inventoried | No dated fleet row; exact deployed tool version remains unrecorded. |
 | `gluetun_scrapers` | [subtitles](../stacks/subtitles/compose.yml) | `qmcgaw/gluetun` | `v3.41.3` | `3.41.3` | Same declared image/tag; dated observation. |
 | `flaresolverr_subs` | [subtitles](../stacks/subtitles/compose.yml) | `ghcr.io/flaresolverr/flaresolverr` | `v3.5.2` | `3.5.2` | Same declared image/tag; dated observation. |
 | `nensaysubs` | [subtitles](../stacks/subtitles/compose.yml) | `nensaysubs` | `latest` | N/A | Same custom mutable tag; deployed source/app version unrecorded. |
-| `ffsubsync` | [subtitles](../stacks/subtitles/compose.yml) | `ffsubsync` | `latest` | Not inventoried | No fleet row; runtime presence/version not established. |
+| `ffsubsync` | [subtitles](../stacks/subtitles/compose.yml) | `ffsubsync` | `latest` | Not inventoried | No dated fleet row; exact deployed tool version remains unrecorded. |
 
 All 15 retained services present in fleet inventory have matching image/tag strings.
 FFsubsync and MakeMKV have no entries; their recipes are evidence below, not proof
 of deployed versions. Fleet still lists `qmcgaw/deunhealth:latest` with application
-`latest @ 37e5bd4`, while this repository explicitly removed it in this task.
-That expected lifecycle discrepancy remains for Luis's runtime/fleet reconciliation;
-source removal does not prove its container was stopped. No inventory was edited.
+`latest @ 37e5bd4`, while the applied restructuring removed it and Luis confirms
+the old stack was removed. This is stale fleet evidence, not a pending cutover
+action or proof of a remaining production container. No inventory was edited.
 
 ## Custom tool recipe versions
 

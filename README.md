@@ -12,8 +12,10 @@ There is no root aggregate Compose file.
 
 **Luis operates production through Portainer connected directly to GitHub.**
 Each unit includes compact PORTAINER.md metadata and a blank `.env.example` for
-his configuration. Repository restructuring does not mean deployment occurred;
-the last operator-confirmed deployment was one stack, pending Luis's cutover.
+his configuration. **Cutover is complete:** Luis confirms the old monolithic stack
+was removed, all four production stacks are operational, the external network was
+provisioned and the Portainer variable contracts were populated. This is operator
+evidence, recorded 2026-10-11; agents did not inspect runtime state.
 GitHub Actions separately synchronizes a server checkout for host workflows and
 manual builds; Portainer does not deploy from that checkout.
 
@@ -29,7 +31,7 @@ docker network create --subnet 172.18.0.0/16 arrnet_managed
 
 Reuse the existing network; preserve it across stack removal. See
 [shared networking](docs/operations/networking.md) for evidence, static addresses
-and lifecycle/cutover responsibilities.
+and ongoing lifecycle responsibilities.
 
 ## Find your way
 
@@ -38,7 +40,7 @@ and lifecycle/cutover responsibilities.
 - [Tools](docs/tools/README.md): locally owned utilities and manual build notes.
 - [Canaries](canaries/README.md): temporary migrations; Jellyfin is INACTIVE.
 - [Implementation record](docs/design/restructuring.md) and
-  [Luis's handoff](docs/design/implementation-handoff.md).
+  [completed migration record](docs/design/implementation-handoff.md).
 - [CONTRIBUTING.md](CONTRIBUTING.md): contribution and maintenance rules.
 - [AGENTS.md](AGENTS.md): agent authority, effect limits and protected files.
 

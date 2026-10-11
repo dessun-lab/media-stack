@@ -1,10 +1,12 @@
-# Media Stack restructuring: approved implementation
+# Media Stack restructuring: applied design
 
-[Documentation map](../README.md) · [Implementation handoff](implementation-handoff.md)
+[Documentation map](../README.md) · [Completed migration record](implementation-handoff.md)
 
-**Approved 2026-10-11; repository implementation and static validation complete.** Luis's implementation
-brief supersedes the earlier assessment. Local commits are authorized by the completion addendum; Luis alone owns
-publication and Portainer/runtime cutover.
+**APPLIED.** Approved implementation and static validation completed 2026-10-11;
+Luis's subsequent operator report confirms successful runtime cutover and all four
+production stacks operational. The implementation brief superseded the earlier
+assessment. The historical local-commit approval covered that implementation;
+future tasks retain their own Git/effect boundaries.
 
 ## Selected ownership
 
@@ -32,6 +34,7 @@ docs/{README,architecture,evidence,versions}.md
 docs/operations/{deployment,networking,synchronization,subtitles}.md
 docs/design/{restructuring,production-units,network-and-variables,implementation-handoff,canaries}.md
 docs/tools/README.md
+docs/audits/service-improvements-2026-10.md
 .agents/skills/{route-model-fit,optimize-agent-budget,execute-orchestrated-brief}/SKILL.md
 .github/workflows/sync-repo.yml
 stacks/
@@ -54,7 +57,11 @@ Existing repository metadata remains. Protected root `.env` remains untouched;
 only blank per-unit examples enter source control. ThemeARR remains externally
 owned in `animethemes-cli`; do not import its recipe/source.
 
-## Explicit changes and invariants
+## Historical implementation scope and retained invariants
+
+The following instructions record the completed implementation scope, not pending
+work. Source movement preserved comments at that point; the post-cutover task
+subsequently standardizes service headers without changing YAML semantics.
 
 - Remove deunhealth and its exclusively owned qBittorrent label. This is an
   authorized functional removal, not a move. Remaining production coverage is 17.
@@ -78,7 +85,10 @@ owned in `animethemes-cli`; do not import its recipe/source.
 - Select subtitle Compose explicitly from script location; preserve all workflow
   modes, Docker exec/run behavior and arguments. No script/runtime execution here.
 
-## Ordered checkpoints and acceptance
+## Completed implementation procedure (historical)
+
+These were the ordered checkpoints used for implementation. They are preserved
+for provenance, not as an open checklist or renewed authorization.
 
 1. Reconcile this design and companions; record baseline Git/source state and
    perform the conditional VueTorrent no-consumer check before deleting anything.

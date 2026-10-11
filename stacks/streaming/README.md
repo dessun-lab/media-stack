@@ -6,7 +6,8 @@ Serve video and music independently of acquisition and library-management update
 
 [Compose](compose.yml) owns exact configuration. [PORTAINER metadata](PORTAINER.md)
 and the blank [environment contract](.env.example) are Luis's configuration handoff.
-This is repository authority; deployment/cutover has not been performed here.
+Luis confirms this production stack is operational after cutover (operator update
+recorded 2026-10-11); runtime operations remain his responsibility.
 
 Jellyfin and Navidrome have their own interfaces/state and no VPN or startup
 dependency. Their common serving purpose justifies one update boundary; host,
@@ -21,8 +22,8 @@ media and plugin failures can still cross stack boundaries.
   `12.1ubu2604-ls50` is preserved; do not normalize its version identity.
 - Navidrome retains `172.18.0.8`, port 4533, `${PUID}:${PGID}` and runtime state
   under `/home/devops/runtime/arrstack/navidrome`. Its read-only music bind now
-  expects `/home/devops/infra/media-stack/navidrome/music`; Luis prepares this
-  server-only data before cutover. It differs from Lidarr's declared music source;
+  uses `/home/devops/infra/media-stack/navidrome/music`; this server-only data
+  remains Luis-owned. It differs from Lidarr's declared music source;
   no host alias or application mapping is inferred.
 - Navidrome's external-auth trust expression, scanning/transcoding, metrics and
   sharing settings are unchanged. This repository does not audit active trust values.
@@ -41,10 +42,11 @@ owns provenance, fleet comparison and uncertainty.
 
 ## Shared contracts
 
-**Prerequisite:** shared network `arrnet_managed` must exist before deployment.
+**Shared infrastructure:** `arrnet_managed` is provisioned and in use per Luis.
+It must remain available before any future deployment/recreation.
 Its lifecycle is externally managed / USER-owned by Luis; preserve declared IPs
 and names. See [network provisioning](../../docs/operations/networking.md).
 Luis owns Portainer activation and runtime validation.
 See [architecture](../../docs/architecture.md),
 [network/variable rules](../../docs/design/network-and-variables.md) and
-[cutover handoff](../../docs/design/implementation-handoff.md).
+[completed migration record](../../docs/design/implementation-handoff.md).

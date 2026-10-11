@@ -3,6 +3,7 @@
 Start with [documentation](docs/README.md) and [AGENTS](AGENTS.md). Write project
 documentation and communication in English. Luis owns product/operational choices;
 Portainer is exclusively his surface and is never an agent inspection target.
+The four-stack cutover is complete per Luis's operator update recorded 2026-10-11.
 
 ## Choose the owner
 
@@ -16,7 +17,9 @@ Portainer is exclusively his surface and is never an agent inspection target.
   with that tool. Temporary migrations use stable `canaries/<service>/` owners,
   explicit inactive/active status and MIGRATIONS history.
 - `docs/` owns architecture, cross-cutting operations, evidence and decisions;
-  link local owners instead of maintaining duplicate service/tool manuals.
+  link local owners instead of maintaining duplicate service/tool manuals. Keep
+  unimplemented findings in [audits](docs/audits/service-improvements-2026-10.md);
+  review and authorize them separately from current-state documentation.
 
 ## Version maintenance
 

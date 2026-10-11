@@ -13,5 +13,8 @@
 | **Network prerequisite** | Must exist before deployment; [provisioning](../../docs/operations/networking.md) |
 | **Operator** | Luis / USER-owned |
 
-Documentation only. Luis supplies values and owns all Portainer operations,
-network preparation, cutover and rollback. See the [stack README](README.md).
+**Operational status:** cutover complete per Luis (update recorded 2026-10-11);
+Portainer variables and the external network are populated/provisioned. Names
+above remain repository recommendations, not a live export of Portainer settings.
+Luis owns all subsequent Portainer operations, network lifecycle and rollback.
+See the [stack README](README.md).

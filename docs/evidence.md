@@ -2,7 +2,13 @@
 
 [Documentation map](README.md) · [Approved design](design/restructuring.md)
 
-## Scope and authority
+## Historical implementation scope and authority
+
+This page retains the checks/effect limits from the original restructuring. Luis
+has since confirmed cutover complete and all four stacks operational (update
+recorded 2026-10-11); see the [completed migration record](design/implementation-handoff.md).
+Subsequent service-header edits are comments only, so the original byte/comment
+parity results below describe the original implementation checkpoint.
 
 Repository restructuring implemented **2026-10-11** from Luis's approved brief,
 including the version-documentation and local-commit addenda. Runtime effects,
@@ -92,8 +98,8 @@ No new Experiment Platform inspection or modification was needed in implementati
 
 ## Acceptance boundary
 
-Static repository acceptance is distinct from runtime acceptance. Luis still owns
-publication, server-only data/config preparation, Portainer setup, shared-network
-preparation, image availability, cutover, runtime validation and rollback. The
-canary remains INACTIVE. A repository removal does not stop an old live container.
-The [handoff](design/implementation-handoff.md) provides exact paths and ownership.
+Original static acceptance did not establish runtime deployment. Luis's subsequent
+operator update establishes the completed cutover: old stack removed, four stacks
+operational, network provisioned and Portainer variable contracts populated.
+No agent runtime inspection occurred. Luis retains future operational authority;
+the canary remains INACTIVE. See the [completed migration record](design/implementation-handoff.md).

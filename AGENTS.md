@@ -6,12 +6,16 @@ This repository owns media-stack definitions, custom image recipes, and host
 tooling. Start with [README.md](README.md), the [documentation map](docs/README.md),
 and [CONTRIBUTING.md](CONTRIBUTING.md). The
 [implementation record](docs/design/restructuring.md) explains the approved split;
-repository completion does not prove runtime cutover. Exact service authority is
+Luis confirms cutover complete and all four production stacks operational
+(operator update recorded 2026-10-11). Treat the migration as applied; do not
+reopen a pending-cutover gate. Exact service authority is
 `stacks/<unit>/compose.yml`; membership/version summaries live in its README,
 Portainer metadata in PORTAINER.md, and blank inputs in `.env.example`. Tool
 source/build instructions live in `tools/<tool>/`; canary status/history in
 `canaries/<service>/`. Cross-cutting operations live under docs/; version provenance
-lives in [docs/versions.md](docs/versions.md).
+lives in [docs/versions.md](docs/versions.md). Proposed improvements live in
+[docs/audits/](docs/audits/service-improvements-2026-10.md), separate from current
+configuration; an audit finding does not authorize implementation.
 
 Luis is the sole Portainer operator: stack creation/deletion, Git and Compose
 paths, variables/secrets, deployment/redeployment, cutover and rollback. Akane
@@ -95,7 +99,7 @@ binds/modes, ports, static IPs, UID/GID/devices, health/restart behavior, labels
 dependencies, plugin bindings and media access. The final design routes through
 [production units](docs/design/production-units.md),
 [network/variable contracts](docs/design/network-and-variables.md) and
-[implementation handoff](docs/design/implementation-handoff.md). Preserve
+[completed migration record](docs/design/implementation-handoff.md). Preserve
 `arrnet_managed`; maintain blank templates from Compose references only.
 Do not introduce profiles, jobs or service cleanup as part of moves. Folder moves,
 legacy deletion, topology changes, or runtime cleanup require their own scope.

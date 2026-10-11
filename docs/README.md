@@ -1,8 +1,9 @@
 # Documentation map
 
 Media Stack documents repository declarations separately from deployed state.
-Luis's last confirmed deployment was one Portainer stack; the four-unit source
-layout is implemented here, with publication and runtime cutover still Luis-owned.
+Luis confirms the four production stacks are operational after successful cutover
+(operator update recorded 2026-10-11). The old monolith was removed; the shared
+network and Portainer variables are provisioned. Runtime authority remains Luis's.
 
 | Subject | Owning authority |
 | --- | --- |
@@ -18,7 +19,8 @@ layout is implemented here, with publication and runtime cutover still Luis-owne
 | Tool source and manual builds | [Tool index](tools/README.md), then tool-local READMEs |
 | Temporary migration operation/history | [Canaries](../canaries/README.md), then scenario README/MIGRATIONS |
 | Approved structure, rationale and acceptance | [Restructuring](design/restructuring.md), [unit decisions](design/production-units.md), [network/variables](design/network-and-variables.md) |
-| Publication, path migration and Luis's cutover | [Implementation handoff](design/implementation-handoff.md) |
+| Completed cutover and path-change history | [Migration record](design/implementation-handoff.md) |
+| Proposed service improvements (not implemented) | [October audit](audits/service-improvements-2026-10.md) |
 | Evidence, permitted differences and validation | [Evidence record](evidence.md) |
 
 [CONTRIBUTING](../CONTRIBUTING.md) governs additions/maintenance;

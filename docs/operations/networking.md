@@ -8,8 +8,10 @@
 `arrnet_managed` is persistent shared host infrastructure for the four Media Stack
 production projects. It preserves the common network identity and existing static
 addresses while services have independent stack lifecycles. **Luis / USER owns
-runtime creation, verification, preservation and eventual deletion.** No application
-stack owns this network or should create/delete it as part of its lifecycle.
+runtime creation, verification, preservation and eventual deletion.** Luis confirms
+the network was provisioned and is in use after cutover (update recorded
+2026-10-11). No application stack owns this network or should create/delete it
+as part of its lifecycle.
 
 All four Compose files deliberately use the same declaration:
 
@@ -33,9 +35,9 @@ is absent. See the [Compose network reference](https://docs.docker.com/reference
 
 ## Provision once, only if absent
 
-During runtime cutover, Luis verifies the existing network on the intended Docker
-host and reuses it when compatible. If absent, this is the minimal creation command
-that reproduces the repository-declared contract:
+For future host recovery or fresh provisioning, Luis verifies the network on the
+intended Docker host and reuses it when compatible. If absent, this minimal
+creation command reproduces the repository-declared contract:
 
 ```bash
 docker network create --subnet 172.18.0.0/16 arrnet_managed
@@ -98,17 +100,17 @@ its interface/address; they do not need additional static addresses. Services wi
 startup order or make stack lifecycles dependent. The inactive Jellyfin canary's
 separate network is outside this production provisioning contract.
 
-## Persistence and cutover
+## Persistence and completed cutover
 
 Stopping/removing an individual production stack must leave the shared network
 available, including when all four stacks are stopped or removed. Compose does
 not remove external networks during `down`; see [Docker's removal contract](https://docs.docker.com/reference/cli/docker/compose/down/).
 Keep every production declaration external rather than making one stack the owner.
 
-Luis must preserve the network when retiring the old monolithic stack: its old
-Compose declared a managed network, and the new files do not retroactively change
-that old project's ownership. Transfer fixed names, addresses and writable state
-once, without concurrent old/new owners. See the [cutover handoff](../design/implementation-handoff.md).
+Luis has removed the old monolithic stack and provisioned the external network.
+Historical caution for rollback/recovery: the old Compose declared a managed
+network; reusing it would restore that ownership risk. Avoid concurrent owners
+of fixed names, addresses and writable state. See the [completed migration record](../design/implementation-handoff.md).
 
 External ownership is not protection against host-wide cleanup: unused networks
 can be removed by [Docker network pruning](https://docs.docker.com/reference/cli/docker/network/prune/).
@@ -117,4 +119,4 @@ containers are attached. Eventual deletion is a separate USER decision after all
 consumers and future deployment needs are retired, never routine stack cleanup.
 
 This documentation correction performs no network creation, runtime inspection,
-Portainer operation or deployment. Luis verifies the actual network at cutover.
+Portainer operation or deployment. Provisioned status comes from Luis's report.

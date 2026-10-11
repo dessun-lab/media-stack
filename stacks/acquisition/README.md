@@ -6,7 +6,8 @@ Acquire and process media while retaining the main VPN namespace and its consume
 
 [Compose](compose.yml) owns exact configuration. [PORTAINER metadata](PORTAINER.md)
 and the blank [environment contract](.env.example) are Luis's configuration handoff.
-This is repository authority; deployment/cutover has not been performed here.
+Luis confirms this production stack is operational after cutover (operator update
+recorded 2026-10-11); runtime operations remain his responsibility.
 
 Gluetun owns the network namespace of qBittorrent, Prowlarr, FlareSolverr,
 yt-dlp and ThemeARR. All depend on its health; never separate them from that
@@ -51,10 +52,11 @@ owns provenance, fleet comparison and uncertainty.
 
 ## Shared contracts
 
-**Prerequisite:** shared network `arrnet_managed` must exist before deployment.
+**Shared infrastructure:** `arrnet_managed` is provisioned and in use per Luis.
+It must remain available before any future deployment/recreation.
 Its lifecycle is externally managed / USER-owned by Luis; preserve declared IPs
 and names. See [network provisioning](../../docs/operations/networking.md).
 Luis owns Portainer activation and runtime validation.
 See [architecture](../../docs/architecture.md),
 [network/variable rules](../../docs/design/network-and-variables.md) and
-[cutover handoff](../../docs/design/implementation-handoff.md).
+[completed migration record](../../docs/design/implementation-handoff.md).

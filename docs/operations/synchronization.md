@@ -1,6 +1,6 @@
 # Server checkout synchronization
 
-[Documentation map](../README.md) · [Path handoff](../design/implementation-handoff.md)
+[Documentation map](../README.md) · [Path-change history](../design/implementation-handoff.md)
 
 The [caller](../../.github/workflows/sync-repo.yml) runs on main push (no path
 filter) and manual dispatch, selects the dispatch server or DEFAULT_SERVER_NAME,
@@ -29,9 +29,11 @@ keys. Its clean action targets runner workspace, not the remote checkout. It
 contains no Docker build, Compose operation or Portainer request. This source
 snapshot uses mutable `@main`; no live variables, secrets or jobs were inspected.
 
-The next authorized publication may create a new checkout rather than update the
-old one. Pull/clone is not a data migration or backup. Luis prepares server-only
-`navidrome/music` and `yt-dlp/cookies.txt` at the new prefix and updates external
-script/build callers/config context. Source recipes now live under `tools/`;
-cookie subpaths intentionally do not. No remote checkout was created, renamed or
+The cutover is complete per Luis; the current checkout contract uses the new
+prefix. Pull/clone is still not a data migration or backup: future recovery must
+preserve server-only `navidrome/music`, `yt-dlp/cookies.txt` and external
+script/build callers/config context. The operator report does not establish the
+exact sync-job history or whether the old checkout was retained. Source recipes
+now live under `tools/`; cookie subpaths intentionally do not. No remote checkout
+was created, renamed or
 removed by this task. Portainer independently consumes GitHub and remains Luis-owned.

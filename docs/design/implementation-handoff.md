@@ -1,10 +1,18 @@
-# Implementation and Luis-owned operational handoff
+# Completed Media Stack migration
 
-[Design overview](restructuring.md) · [Deployment](../operations/deployment.md)
+[Design overview](restructuring.md) · [Current deployment](../operations/deployment.md)
 
-Approved 2026-10-11. Repository identity is `dessun-lab/media-stack`; origin remains
-`git@github-lab:dessun-lab/media-stack.git`. Local checkout already has the new name.
-No local directory rename, remote publication or runtime action is part of this task.
+**APPLIED — operator confirmation recorded 2026-10-11.** Luis reports the previous
+monolithic Portainer stack removed, the four production stacks created, shared
+external network provisioned, environment contracts populated and production
+services up again. The new architecture is operational. This record replaces the
+completed implementation handoff; it is not a remaining migration checklist.
+
+Repository identity is `dessun-lab/media-stack`; origin uses
+`git@github-lab:dessun-lab/media-stack.git`. Agent static validation and Luis's
+runtime acceptance are separate evidence. No agent inspected Portainer or runtime.
+The report does not assert exact Portainer display names, image digests, sync-job
+history or the disposition of an old server checkout.
 
 ## Exact ownership and path changes
 
@@ -26,31 +34,17 @@ Only those two infrastructure binds reference the renamed checkout. All
 old-checkout compatibility/decoupled-input proposal is superseded by Luis's explicit
 new-destination decision; no `dl-actions` change is necessary.
 
-## Publication and server preparation — Luis
+## Durable recovery boundaries
 
-A later authorized main push invokes sync. With the operator's infrastructure
-`DEPLOY_PATH`, it targets `/home/devops/infra/media-stack`; it may clone there
-instead of updating the old checkout. A clone does not migrate server-only music,
-cookies, configuration, aliases or schedules. Luis prepares these exact two bind
-sources and script/config invocation context before switching consumers. No secret
-value is copied or reconstructed here. The old checkout is not remotely removed.
+Current stack paths and blank variable contracts live with their stack owners;
+[deployment](../operations/deployment.md), [networking](../operations/networking.md)
+and [synchronization](../operations/synchronization.md) own ongoing operations.
+Luis controls future publication, runtime maintenance and rollback. Clone/pull
+cannot restore server-only music, cookies or mutable application data. Preserve
+those separately; no secret values belong in this record.
 
-## Portainer and runtime — Luis only
-
-Use the repository `dessun-lab/media-stack` and the four stack-local PORTAINER.md
-files for recommended `media-stack-<unit>` names, exact Compose paths and blank
-environment contracts. Luis supplies operational values, configures Git/updates,
-creates/replaces stacks, deploys and controls rollback. Agents do not access or
-inspect Portainer; its settings are not repository implementation gates.
-
-Luis preserves/prepares `arrnet_managed` and existing addresses before activation.
-Prevent old-project cleanup from deleting the shared network; transfer fixed
-container names/IPs/state ownership once. Prepare backups and interruption/rollback
-procedures; never activate old and new writers simultaneously. Ensure existing
-custom tags are available; builds remain manual. Retire any old deunhealth deployment
-as part of Luis's cutover, not by assuming repository deletion stopped it.
-
-Runtime acceptance covers streaming/plugins/GPU, management/application endpoints,
-both VPN namespaces/health dependencies, acquisition and subtitle paths. Reverting
-Git alone cannot restore deployment ownership or changed data. The Jellyfin canary
-stays inactive; isolation/activation is a separately owned future migration.
+The old Compose owned its network: restoring old Git files alone is not an
+operational rollback and may reintroduce network ownership/deunhealth. Never run
+old and new owners of the same names, addresses or writable state concurrently.
+The Jellyfin canary remains inactive; its earlier migration is separate from the
+completed production-stack cutover and future activation requires isolation.
