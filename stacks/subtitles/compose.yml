@@ -1,0 +1,84 @@
+services:
+
+  # ============================================================
+  # GLUETUN SCRAPERS
+  # VPN independiente para NensaySubs y herramientas
+  # sensibles a geolocalización.
+  # ============================================================
+  gluetun_scrapers:
+    image: qmcgaw/gluetun:v3.41.3
+    container_name: gluetun_scrapers
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - /home/devops/runtime/arrstack/gluetun-scrapers:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=${SCRAPER_VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${SCRAPER_VPN_TYPE}
+      - WIREGUARD_PRIVATE_KEY=${SCRAPER_WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${SCRAPER_WIREGUARD_ADDRESSES}
+      - SERVER_COUNTRIES=${SCRAPER_SERVER_COUNTRIES}
+      - TZ=${TZ}
+      # - FIREWALL_OUTBOUND_SUBNETS=172.21.0.0/16,10.10.0.0/24
+      # - DNS_UPSTREAM_RESOLVER_TYPE=plain
+      # - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1:53,8.8.8.8:53
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.10
+
+  flaresolverr_subs:
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
+    container_name: flaresolverr_subs
+    restart: unless-stopped
+
+    network_mode: service:gluetun_scrapers
+
+    depends_on:
+      gluetun_scrapers:
+        condition: service_healthy
+        restart: true
+
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+
+  nensaysubs:
+    image: nensaysubs:latest
+    container_name: nensaysubs
+    restart: "no"
+    stdin_open: true
+    tty: true
+    depends_on:
+      gluetun_scrapers:
+        condition: service_healthy
+        restart: true
+      flaresolverr_subs:
+        condition: service_started
+    network_mode: service:gluetun_scrapers
+    environment:
+      - TZ=${TZ}
+      - NENSAYSUBS_OUTPUT_DIR=/data/media/subs
+      - NENSAYSUBS_EPISODE_BASE_DIR=/data/media
+      - NENSAYSUBS_FLARESOLVERR_URL=http://127.0.0.1:8191/v1
+      - NENSAYSUBS_INTERACTIVE=true
+    volumes:
+      - /home/devops/runtime/arrstack/nensaysubs:/runtime
+      - /data/media:/data/media
+
+  ffsubsync:
+    image: ffsubsync:latest
+    restart: "no"
+    network_mode: none
+    container_name: ffsubsync
+    volumes:
+      - /data/media:/data/media
+    stdin_open: true
+    tty: true
+
+networks:
+  arrnetwork:
+    external: true
+    name: arrnet_managed

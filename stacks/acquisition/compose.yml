@@ -1,0 +1,143 @@
+services:
+
+  # ============================================================
+  # GLUETUN — VPN Container (kill switch + tunnel)
+  # All VPN-protected services route through this container.
+  # Ports for those services are mapped HERE, not on the services.
+  # ============================================================
+  gluetun:
+    image: qmcgaw/gluetun:v3.41.3
+    container_name: gluetun
+    restart: unless-stopped
+    ports:
+      - "${GLUETUN_HOST}:8081:8080"   # qBittorrent WebUI
+      - "${GLUETUN_HOST}:9696:9696"   # Prowlarr WebUI
+      - "${GLUETUN_HOST}:7681:7681"   # cli API (for themearr)
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - /home/devops/runtime/arrstack/gluetun:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+      - TZ=${TZ}
+      # - FIREWALL_OUTBOUND_SUBNETS=172.21.0.0/16,10.10.0.0/24
+      # - DNS_UPSTREAM_RESOLVER_TYPE=plain
+      # - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1:53,8.8.8.8:53
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.3
+
+  # ============================================================
+  # QBITTORRENT — Torrent Client (runs through Gluetun VPN)
+  # ALL traffic goes through the VPN tunnel. No direct internet.
+  # ============================================================
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:5.2.4_v2.0.15-ls479
+    container_name: qbittorrent
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+      - WEBUI_PORT=${QBITTORRENT_WEBUI_PORT_INTERNAL:-8080}
+      - DOCKER_MODS=ghcr.io/vuetorrent/vuetorrent-lsio-mod:latest
+    volumes:
+      - /home/devops/runtime/arrstack/qbittorrent:/config
+      - /data/fast/qbittorrent:/data
+      - /home/devops/runtime/arrstack/qbittorrent/temp:/temp
+      - /home/devops/runtime/arrstack/qbittorrent/watch:/watch
+
+  # ============================================================
+  # PROWLARR — Indexer Manager (runs through Gluetun VPN)
+  # Manages torrent indexers. Syncs to Radarr/Sonarr.
+  # ============================================================
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:2.6.5.5623-ls161
+    container_name: prowlarr
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+    volumes:
+      - /home/devops/runtime/arrstack/prowlarr:/config
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
+    container_name: flaresolverr
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    environment:
+      - LOG_LEVEL=info
+      - TZ=${TZ}
+
+  ytdlp:
+    image: ytdlp:latest
+    container_name: ytdlp
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+    volumes:
+      - /home/devops/runtime/arrstack/ytdlp/music:/music
+      - /home/devops/runtime/arrstack/ytdlp/downloads:/downloads
+      - /home/devops/infra/media-stack/yt-dlp/cookies.txt:/cookies.txt
+    stdin_open: true
+    tty: true
+    entrypoint: ["sh", "-c"]
+    command: "tail -f /dev/null"
+    restart: unless-stopped
+
+  themearr:
+    image: themearr:latest
+    container_name: themearr
+    restart: unless-stopped
+    network_mode: service:gluetun
+    depends_on:
+      gluetun:
+        condition: service_healthy
+        restart: true
+    environment:
+      - TZ=${TZ}
+      - ANIMETHEMES_OUTPUT_DIR=/data/anime
+      - ANIMETHEMES_API_URL=${ANIMETHEMES_API_URL:-http://api.animethemes.moe}
+    volumes:
+      - /home/devops/runtime/arrstack/themearr/AnimeThemes:/data/anime
+
+  makemkv:
+    image: makemkv:latest
+    container_name: makemkv
+    restart: "no"
+    network_mode: none
+    environment:
+      - HOME=/config
+    volumes:
+      - /home/devops/runtime/arrstack/makemkv:/config
+      - /data/fast/qbittorrent/downloads:/downloads
+
+networks:
+  arrnetwork:
+    external: true
+    name: arrnet_managed

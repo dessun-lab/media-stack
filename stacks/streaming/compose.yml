@@ -1,0 +1,112 @@
+services:
+
+  # jellyfin:
+  #   image: linuxserver/jellyfin:10.11.11
+  #   container_name: jellyfin
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${JELLYFIN_HOST}:8096:8096"
+  #     - "${JELLYFIN_LOCAL_HOST}:8096:8096"
+  #   environment:
+  #     - PUID=${PUID}
+  #     - PGID=${PGID}
+  #     - UMASK=002
+  #     - TZ=${TZ}
+  #   devices:
+  #     - /dev/dri:/dev/dri
+  #   group_add:
+  #     - "${GID_VIDEO:-44}"
+  #     - "${GID_RENDER:-993}"
+  #   volumes:
+  #     - /home/devops/runtime/jellyfin/config:/config
+  #     - /home/devops/runtime/jellyfin/data/cache:/config/cache
+  #     - /home/devops/runtime/jellyfin/data/transcode:/config/data/transcode
+  #     - /home/devops/runtime/jellyfin/data/metadata:/config/data/metadata
+
+  #     - /home/devops/infra/dessun-jellyfin-ui/dist/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/JellysunWebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
+
+  #     - /data/media:/data/media
+  #   networks:
+  #     arrnetwork:
+  #       ipv4_address: 172.18.0.2
+
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:12.1ubu2604-ls50
+    container_name: jellyfin
+    restart: unless-stopped
+    ports:
+      - "${JELLYFIN_HOST}:8096:8096"
+      - "${JELLYFIN_LOCAL_HOST}:8096:8096"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "${GID_VIDEO:-44}"
+      - "${GID_RENDER:-993}"
+    volumes:
+      - /home/devops/runtime/jellysun/config:/config
+      - /home/devops/runtime/jellysun/data/cache:/config/cache
+      - /home/devops/runtime/jellysun/data/transcode:/config/data/transcode
+      - /home/devops/runtime/jellysun/data/metadata:/config/data/metadata
+
+      - /data/media:/data/media
+
+      #PLUGINS
+      - /home/devops/infra/jellysun-ui/dist/file-transformation/Jellyfin.Plugin.FileTransformation.dll:/config/data/plugins/FileTransformation/Jellyfin.Plugin.FileTransformation.dll:ro
+      - /home/devops/infra/jellysun-ui/dist/jellysun-web-integration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:/config/data/plugins/Jellysun.WebIntegration/Jellyfin.Plugin.Jellysun.WebIntegration.dll:ro
+
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.2
+
+  navidrome:
+    image: deluan/navidrome:0.64.2
+    container_name: navidrome
+    user: "${PUID}:${PGID}"
+    restart: unless-stopped
+    ports:
+      - "${NAVIDROME_HOST}:4533:4533"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - ND_MUSICFOLDER=/music
+      - ND_DATAFOLDER=/data
+      - ND_LOGLEVEL=info
+      - ND_PORT=4533
+      - ND_ADDRESS=0.0.0.0
+      - ND_SCANNER_SCHEDULE=1h
+      - ND_SCANNER_WATCHERWAIT=1m
+      - ND_ENABLETRANSCODINGCONFIG=true
+      - ND_DEFAULTTHEME=Dark
+      - ND_ENABLESHARING=true
+      - ND_ENABLEDOWNLOADS=true
+      - ND_FFMPEGPATH=/usr/bin/ffmpeg
+      - ND_TRANSCODINGCACHESIZE=500MB
+      - ND_DEFAULTDOWNSAMPLINGFORMAT=opus
+      - ND_ENABLEARTWORKPRECACHE=true
+      - ND_COVERARTQUALITY=85
+      - ND_ENABLEEXTERNALSERVICES=true
+      - ND_ENABLELOGREDACTING=true
+      - ND_SESSIONTIMEOUT=72h
+      - ND_PROMETHEUS_ENABLED=true
+      - ND_PROMETHEUS_METRICSPATH=/metrics
+      - ND_ENABLEUSEREDITING=false
+      - ND_EXTAUTH_TRUSTEDSOURCES=${ND_EXTAUTH_TRUSTEDSOURCES:-10.10.0.1/32}
+      - ND_EXTAUTH_USERHEADER=Remote-User
+    volumes:
+      - "/home/devops/runtime/arrstack/navidrome:/data"
+      - "/home/devops/infra/media-stack/navidrome/music:/music:ro"
+    networks:
+      arrnetwork:
+        ipv4_address: 172.18.0.8
+
+networks:
+  arrnetwork:
+    external: true
+    name: arrnet_managed

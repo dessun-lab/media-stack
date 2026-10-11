@@ -2,6 +2,9 @@
 
 set -e
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SUBTITLE_COMPOSE="${SCRIPT_DIR}/../stacks/subtitles/compose.yml"
+
 SUBS_DIR="/data/media/subs"
 MEDIA_ROOT="/data/media"
 SYNC_ONLY=false
@@ -130,7 +133,7 @@ sync_single_pair() {
 	echo "    OUT   : $output" >&2
 	echo >&2
 
-	docker compose run --rm ffsubsync "$video" -i "$sub" -o "$output"
+	docker compose -f "$SUBTITLE_COMPOSE" run --rm ffsubsync "$video" -i "$sub" -o "$output"
 
 	echo >&2
 	echo "[+] Sincronización completada:" >&2

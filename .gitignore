@@ -1,2 +1,5 @@
 .env
 **/sso-new-redacted.xml
+# Keep real environment files private; publish only blank variable contracts.
+.env.*
+!.env.example
