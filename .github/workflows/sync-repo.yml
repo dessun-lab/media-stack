@@ -20,4 +20,4 @@ jobs:
     secrets: inherit
     with:
       server-name: ${{ inputs.server-name || vars.DEFAULT_SERVER_NAME }}
-      repository: 'arrstack'
+      repository: ${{ github.event.repository.name }}
