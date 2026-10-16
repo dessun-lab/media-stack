@@ -18,6 +18,8 @@ provisioned and the Portainer variable contracts were populated. This is operato
 evidence, recorded 2026-10-11; agents did not inspect runtime state.
 GitHub Actions separately synchronizes a server checkout for host workflows and
 manual builds; Portainer does not deploy from that checkout.
+Luis also confirms Bazarr is deployed and functioning in the subtitles unit
+(operator update recorded 2026-10-15).
 
 ## Prerequisite: shared network
 
@@ -37,8 +39,8 @@ and ongoing lifecycle responsibilities.
 
 - [Documentation map](docs/README.md): current architecture and operations.
 - [Version inventory](docs/versions.md): declared tags, fleet evidence and uncertainty.
-- [Bazarr setup](docs/operations/bazarr.md): Spanish/English subtitles through
-  Radarr/Sonarr; new repository addition pending Luis's deployment and acceptance.
+- [Bazarr operations](docs/operations/bazarr.md): deployed Spanish/English subtitle
+  service integrated with Radarr/Sonarr.
 - [Tools](docs/tools/README.md): locally owned utilities and manual build notes.
 - [Canaries](canaries/README.md): temporary migrations; Jellyfin is INACTIVE.
 - [Implementation record](docs/design/restructuring.md) and

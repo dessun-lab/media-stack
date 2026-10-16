@@ -9,9 +9,9 @@ cutover report recorded 2026-10-11. He removed the monolithic stack, provisioned
 the shared network and populated Portainer variables. Runtime status is Luis's
 operator evidence; agents did not inspect it.
 
-The 2026-10-15 Bazarr addition is the eighteenth declaration and is **pending Luis's
-deployment and application acceptance**. The earlier cutover report covers the
-original 17 services, not this addition. See the [Bazarr runbook](operations/bazarr.md).
+Bazarr is the eighteenth service. Luis confirms it is deployed and functioning
+(operator update recorded 2026-10-15). This is operator evidence; agents did not
+inspect Portainer or runtime state. See [Bazarr operations](operations/bazarr.md).
 
 ```mermaid
 flowchart LR

@@ -8,10 +8,10 @@ manually operated cross-tool workflow.
 [Compose](compose.yml) owns exact configuration. [PORTAINER metadata](PORTAINER.md)
 and the blank [environment contract](.env.example) are Luis's configuration handoff.
 Luis confirms this production stack is operational after cutover (operator update
-recorded 2026-10-11); runtime operations remain his responsibility.
-**Bazarr is a subsequent repository addition (2026-10-15), pending Luis's deployment
-and application setup.** Follow the [Bazarr runbook](../../docs/operations/bazarr.md)
-for Radarr/Sonarr integration, Spanish/English profiles and Jellyfin acceptance.
+recorded 2026-10-11) and Bazarr is deployed and functioning (operator update
+recorded 2026-10-15). Runtime operations remain his responsibility. See
+[Bazarr operations](../../docs/operations/bazarr.md) for its configuration and
+maintenance contract.
 
 The dedicated scraper Gluetun owns the network namespace for Bazarr, FlareSolverr
 Subs and NensaySubs. NensaySubs also depends on FlareSolverr Subs and uses its loopback
@@ -22,12 +22,12 @@ in the same [host workflow](../../docs/operations/subtitles.md) and media writes
 
 - Bazarr shares `gluetun_scrapers` at `172.18.0.10`, waits for VPN health and
   follows explicit Compose restarts of its owner. It calls Radarr/Sonarr at their
-  existing static IPs through narrow local firewall exceptions, and writes the same library
-  mounts at `/movies`, `/tv` and `/shows`. `/config` belongs to Bazarr alone.
-  Supply `BAZARR_HOST` (host bind address), `PUID`, `PGID` and `TZ` in Portainer;
-  UI port `6767` is published by Gluetun. No cross-stack Compose dependency is introduced.
+  existing static IPs through narrow local firewall exceptions. It writes the
+  shared library mounts at `/movies`, `/tv` and `/shows`; `/config` belongs to
+  Bazarr. `BAZARR_HOST`, `PUID`, `PGID` and `TZ` are Portainer inputs; Gluetun
+  publishes Bazarr's UI on port `6767`. No cross-stack Compose dependency exists.
 - `gluetun_scrapers` retains `172.18.0.10`, separate SCRAPER VPN inputs, tunnel
-  device/capability and runtime `arrstack/gluetun-scrapers`. It now publishes Bazarr's
+  device/capability and runtime `arrstack/gluetun-scrapers`. It publishes Bazarr's
   UI and permits outbound access to manager IPs `.4` and `.5` only. These exceptions
   also apply to its other namespace consumers; internet egress remains VPN-routed.
 - VPN/solver retain `unless-stopped`; NensaySubs and FFsubsync retain restart `no`.

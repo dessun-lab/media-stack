@@ -15,19 +15,20 @@ digest was queried for those existing services. Bazarr's new registry verificati
 is recorded separately below. `latest` is mutable, and `N/A` does not establish
 an app version.
 
-Luis confirms production is operational after cutover (update recorded 2026-10-11).
-That report establishes deployment status, not newly measured app versions or
-custom-image digests. The dated fleet snapshot remains unchanged.
+Luis confirms production is operational after cutover (update recorded 2026-10-11)
+and Bazarr is deployed and functioning (update recorded 2026-10-15). These reports
+establish operational status, not newly measured app versions or deployed image
+digests. The dated fleet snapshot remains unchanged.
 
 ## Production declarations and fleet comparison
 
 The owner links are the exact Compose sources for all **18 declared services**
-(17 retained plus Bazarr, whose deployment is pending).
+(17 retained plus deployed Bazarr).
 The application column comes from the dated fleet inventory, not image-tag inference.
 
 | Service | Owner / declaration source | Image identity | Declared tag | Fleet application version | Comparison / uncertainty |
 | --- | --- | --- | --- | --- | --- |
-| `bazarr` | [subtitles](../stacks/subtitles/compose.yml) | `lscr.io/linuxserver/bazarr` | `v1.6.2-ls367` + digest below | Not inventoried | Stable upstream `1.6.2`, LSIO build `ls367`; registry verified, not deployed evidence. Newer build `ls368` also exists; deliberately retain the requested candidate. |
+| `bazarr` | [subtitles](../stacks/subtitles/compose.yml) | `lscr.io/linuxserver/bazarr` | `v1.6.2-ls367` + digest below | Not inventoried | Luis reports it deployed and functioning; registry verified the declared image, but the deployed digest was not inspected. Newer build `ls368` exists; the declared pin remains `ls367`. |
 | `jellyfin` | [streaming](../stacks/streaming/compose.yml) | `lscr.io/linuxserver/jellyfin` | `12.2ubu2604-ls53` | `12.1` | Luis-authorized declaration update; dated fleet still records `12.1ubu2604-ls50`. Deployment of the new tag is not asserted. |
 | `navidrome` | [streaming](../stacks/streaming/compose.yml) | `deluan/navidrome` | `0.64.2` | `0.64.2` | Same declared image/tag; dated observation. |
 | `radarr` | [management](../stacks/management/compose.yml) | `lscr.io/linuxserver/radarr` | `6.4.4.10685-ls317` | `6.4.4.10685` | Same declared image/tag; dated observation. |
@@ -93,9 +94,10 @@ floating the image contents. No image layers were pulled and Docker was not used
 
 A focused read-only check of `homelab-inventory/homelab-inventory.md` at
 `194784db1303f54848566a04250387979f97fd43` (last inventoried 2026-10-15) found no
-Bazarr entry. This check does not refresh the older comparison for other services
-above or assert that Bazarr is deployed. Registry evidence establishes availability
-and the pin; Luis's [setup/acceptance](operations/bazarr.md) establishes operation.
+Bazarr entry. This dated fleet snapshot is incomplete for Bazarr and does not
+refresh the older comparison for other services above. Registry evidence
+establishes availability and the pin; Luis's report establishes deployment and
+operation. See [Bazarr operations](operations/bazarr.md).
 
 ## Custom tool recipe versions
 

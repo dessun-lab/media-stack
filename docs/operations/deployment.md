@@ -9,6 +9,8 @@ it does not deploy from the synchronized server checkout. Luis confirms all four
 production stacks are operational after removing the monolithic stack and
 populating the network/variable contracts (update recorded 2026-10-11). The old
 stack's redeploy blast radius motivated these independent operational units.
+Luis subsequently confirms Bazarr is deployed and functioning in the subtitles
+unit (operator update recorded 2026-10-15). Agents have not inspected its runtime.
 
 Luis alone creates/deletes stacks, changes Git/Compose settings, supplies variables
 and secrets, chooses update policies, deploys, cuts over and rolls back. Akane and

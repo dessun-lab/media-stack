@@ -21,7 +21,7 @@ and NensaySubs, plus FFsubsync coordinated by the same host workflow.
 The authorized Bazarr addition (2026-10-15) joins subtitles by operational purpose.
 Per Luis's egress-policy correction, it shares the scraper VPN namespace, with
 local manager-IP exceptions for Radarr/Sonarr. No fifth stack is introduced.
-Its [runbook](../operations/bazarr.md) owns setup and pending runtime acceptance.
+Its [operations page](../operations/bazarr.md) documents the deployed service.
 
 Two coarse units retained unrelated redeploy scope. Six dependency/per-tool units
 added ownership overhead without operational benefit. Four units give useful

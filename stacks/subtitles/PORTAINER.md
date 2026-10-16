@@ -13,19 +13,12 @@
 | **Network prerequisite** | Must exist before deployment; [provisioning](../../docs/operations/networking.md) |
 | **Operator** | Luis / USER-owned |
 
-**Operational status:** cutover complete per Luis (update recorded 2026-10-11);
-Portainer variables and the external network are populated/provisioned. Names
-above remain repository recommendations, not a live export of Portainer settings.
-Luis owns all subsequent Portainer operations, network lifecycle and rollback.
-See the [stack README](README.md).
+**Operational status:** cutover complete per Luis (2026-10-11); Bazarr deployed
+and functioning per Luis (2026-10-15). Portainer variables and the external
+network are populated/provisioned. Names above remain repository recommendations,
+not a live export of Portainer settings. Luis owns Portainer and network operations.
 
-**Bazarr addition (2026-10-15):** pending deployment/setup, separate from completed
-cutover. New inputs for this stack: `BAZARR_HOST`, `PUID`, `PGID`; existing `TZ`
-also configures Bazarr. Luis supplies a specific reachable host interface address
-and the media-owner UID/GID. Port `6767` is now published on `gluetun_scrapers`;
-Bazarr shares its existing `172.18.0.10` address. Verify port availability and the
-new config directory before deployment. Apply the Gluetun port/firewall changes
-and recreate Bazarr with its VPN owner as necessary; this affects the shared
-scraper namespace and requires Luis's deployment window. API/provider credentials
-belong in Bazarr's persistent UI configuration, not Git or the blank template. See the
-[Bazarr handoff and acceptance checks](../../docs/operations/bazarr.md).
+Bazarr uses `BAZARR_HOST`, `PUID`, `PGID` and `TZ`. Gluetun publishes its UI on
+port `6767` and owns the shared `172.18.0.10` address. Bazarr API/provider
+credentials reside in its persistent UI configuration, outside Git. See the
+[stack README](README.md) and [Bazarr operations](../../docs/operations/bazarr.md).
