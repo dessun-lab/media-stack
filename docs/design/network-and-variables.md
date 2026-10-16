@@ -30,9 +30,10 @@ projects, not addressing or connectivity.
 
 The operational authority is [shared networking](../operations/networking.md):
 it owns the provisioning command, historical parameters, static-address inventory
-and Luis's lifecycle/cutover responsibilities. No new network, subnet, DNS alias,
-static address or VPN identity is introduced. Namespace consumers retain their
-owner's interface; `none` services remain unattached. The disabled canary is
+and Luis's lifecycle/cutover responsibilities. The restructuring introduced no new
+network, subnet, DNS alias, static address or VPN identity. The subsequent Bazarr
+addition shares `gluetun_scrapers` at `172.18.0.10`, with no additional address.
+Namespace consumers retain their owner's interface; `none` services remain unattached. The disabled canary is
 outside this production contract.
 
 ## One blank variable template per unit
@@ -69,6 +70,9 @@ for Luis to supply, without changing expressions into new `:?` checks.
 Generate name sets by parsing only selected Compose YAML and scanning scalar
 values for interpolation; deduplicate and compare against each example. Never run
 Compose against the checkout, inspect `.env`, infer values or copy active settings.
-The production union has 26 unique inputs (33 entries across the four contracts).
+With Bazarr, the production union has 27 unique inputs (36 entries across the four
+contracts). Subtitles adds `BAZARR_HOST`, `PUID` and `PGID`; the latter two already
+exist in other units. `BAZARR_HOST` is the UI's host bind IP, following the managers'
+host-port convention; Luis must explicitly supply it in Portainer.
 Validation uses plain YAML parsing and blank examples without interpolation.
 These blank templates alone are not deployable configuration.

@@ -2,15 +2,18 @@
 
 [Documentation map](README.md)
 
-**Reconciled 2026-10-11.** Compose/tool source is authoritative for what Media Stack
-declares. This page owns version evidence and discrepancies; stack-local tables
+**Existing fleet reconciliation: 2026-10-11; Bazarr addition: 2026-10-15.**
+Compose/tool source is authoritative for what Media Stack declares. This page
+owns version evidence and discrepancies; stack-local tables
 are concise views of their Compose. It is not authorization to upgrade anything.
 
 Fleet evidence: read-only `homelab-inventory/homelab-inventory.md`, commit
 `32a87585bf6404ed4962d1ebf0945d97210ac26d`, `mty-srv01`, last inventoried
 **2026-10-03 (America/Monterrey)**. Its tracked/deployed observations are distinct
 from repository declarations and are not a fresh runtime inspection. No image
-digest was queried. `latest` is mutable, and `N/A` does not establish an app version.
+digest was queried for those existing services. Bazarr's new registry verification
+is recorded separately below. `latest` is mutable, and `N/A` does not establish
+an app version.
 
 Luis confirms production is operational after cutover (update recorded 2026-10-11).
 That report establishes deployment status, not newly measured app versions or
@@ -18,11 +21,13 @@ custom-image digests. The dated fleet snapshot remains unchanged.
 
 ## Production declarations and fleet comparison
 
-The owner links are the exact Compose sources for all **17 retained services**.
+The owner links are the exact Compose sources for all **18 declared services**
+(17 retained plus Bazarr, whose deployment is pending).
 The application column comes from the dated fleet inventory, not image-tag inference.
 
 | Service | Owner / declaration source | Image identity | Declared tag | Fleet application version | Comparison / uncertainty |
 | --- | --- | --- | --- | --- | --- |
+| `bazarr` | [subtitles](../stacks/subtitles/compose.yml) | `lscr.io/linuxserver/bazarr` | `v1.6.2-ls367` + digest below | Not inventoried | Stable upstream `1.6.2`, LSIO build `ls367`; registry verified, not deployed evidence. Newer build `ls368` also exists; deliberately retain the requested candidate. |
 | `jellyfin` | [streaming](../stacks/streaming/compose.yml) | `lscr.io/linuxserver/jellyfin` | `12.2ubu2604-ls53` | `12.1` | Luis-authorized declaration update; dated fleet still records `12.1ubu2604-ls50`. Deployment of the new tag is not asserted. |
 | `navidrome` | [streaming](../stacks/streaming/compose.yml) | `deluan/navidrome` | `0.64.2` | `0.64.2` | Same declared image/tag; dated observation. |
 | `radarr` | [management](../stacks/management/compose.yml) | `lscr.io/linuxserver/radarr` | `6.4.4.10685-ls317` | `6.4.4.10685` | Same declared image/tag; dated observation. |
@@ -50,6 +55,47 @@ of deployed versions. Fleet still lists `qmcgaw/deunhealth:latest` with applicat
 `latest @ 37e5bd4`, while the applied restructuring removed it and Luis confirms
 the old stack was removed. This is stale fleet evidence, not a pending cutover
 action or proof of a remaining production container. No inventory was edited.
+
+## Bazarr registry verification
+
+On **2026-10-15**, public read-only LSCR metadata queries verified the
+[tag listing](https://lscr.io/v2/linuxserver/bazarr/tags/list) and
+[selected manifest](https://lscr.io/v2/linuxserver/bazarr/manifests/v1.6.2-ls367).
+All ten tag-list pages were followed (9,441 tags); the stable `1.6.2` family
+included these forms:
+
+| Available form | Fixation / selection |
+| --- | --- |
+| `1.6.2`, `version-v1.6.2` | Application-version aliases; do not identify a LinuxServer rebuild. |
+| `v1.6.2-ls366`, `v1.6.2-ls367`, `v1.6.2-ls368` | Explicit application + image build. `ls367` is the user-proposed candidate, not the newest listed build. |
+| `amd64-…`, `arm64v8-…` counterparts | Architecture selection; does not make a tag immutable. |
+| Build tag plus `@sha256:…` | Selected: readable app/build identity plus content-addressed fixation, stronger than a tag alone. |
+
+The unprefixed `1.6.2-ls367` manifest returned HTTP 404; the leading `v` matters.
+`version-v1.6.2` resolved to a different digest
+(`sha256:fb0437897eaa7f96cf6ac42f795f8dcc208d34ec969eac5d366454e767304eb9`),
+so it is not interchangeable with the selected build. Neither `latest`,
+`development` nor a prerelease tag was selected. Both the
+[upstream 1.6.2 release](https://github.com/morpheus65535/bazarr/releases/tag/v1.6.2)
+and [LinuxServer ls367 release](https://github.com/linuxserver/docker-bazarr/releases/tag/v1.6.2-ls367)
+report `prerelease: false` and `draft: false` in their public GitHub release metadata.
+
+Exact Compose reference:
+
+```text
+lscr.io/linuxserver/bazarr:v1.6.2-ls367@sha256:c1673816321156b904af9b7e6415ea547ae9622e4acc375358f1e1eb9ed1e904
+```
+
+This is the OCI image-index digest, checked against both the registry response
+header and SHA-256 of the manifest bytes. The index includes Linux `amd64` and
+`arm64` images plus auxiliary descriptors; it retains platform selection without
+floating the image contents. No image layers were pulled and Docker was not used.
+
+A focused read-only check of `homelab-inventory/homelab-inventory.md` at
+`194784db1303f54848566a04250387979f97fd43` (last inventoried 2026-10-15) found no
+Bazarr entry. This check does not refresh the older comparison for other services
+above or assert that Bazarr is deployed. Registry evidence establishes availability
+and the pin; Luis's [setup/acceptance](operations/bazarr.md) establishes operation.
 
 ## Custom tool recipe versions
 

@@ -79,11 +79,12 @@ the four external Compose declarations.
 
 ## Static-address contract
 
-Retain these unique addresses from the pre-split service definitions. All eight
-are valid host addresses within `172.18.0.0/16`; current Compose files own the exact
-service assignments.
+The eight original addresses from the pre-split definitions are retained and are
+unique valid host addresses within `172.18.0.0/16`. Bazarr shares the scraper VPN
+namespace/address; no additional address is assigned. Current Compose files own
+the exact service assignments.
 
-| Existing static address | Service | Owner |
+| Declared static address | Service | Owner |
 | --- | --- | --- |
 | `172.18.0.2` | `jellyfin` | streaming |
 | `172.18.0.3` | `gluetun` | acquisition |
@@ -95,8 +96,11 @@ service assignments.
 | `172.18.0.10` | `gluetun_scrapers` | subtitles |
 
 VPN consumers use their owning Gluetun service's network namespace and therefore
-its interface/address; they do not need additional static addresses. Services with
-`network_mode: none` remain unattached. Shared network membership does not establish
+its interface/address; they do not need additional static addresses. Bazarr uses
+`gluetun_scrapers` (`172.18.0.10`), which publishes its UI on port `6767` and allows
+local outbound access to Radarr/Sonarr at `172.18.0.4/32,172.18.0.5/32`. These
+exceptions affect every scraper-namespace consumer. See the [Bazarr runbook](bazarr.md).
+Services with `network_mode: none` remain unattached. Shared network membership does not establish
 startup order or make stack lifecycles dependent. The inactive Jellyfin canary's
 separate network is outside this production provisioning contract.
 

@@ -37,6 +37,8 @@ and ongoing lifecycle responsibilities.
 
 - [Documentation map](docs/README.md): current architecture and operations.
 - [Version inventory](docs/versions.md): declared tags, fleet evidence and uncertainty.
+- [Bazarr setup](docs/operations/bazarr.md): Spanish/English subtitles through
+  Radarr/Sonarr; new repository addition pending Luis's deployment and acceptance.
 - [Tools](docs/tools/README.md): locally owned utilities and manual build notes.
 - [Canaries](canaries/README.md): temporary migrations; Jellyfin is INACTIVE.
 - [Implementation record](docs/design/restructuring.md) and

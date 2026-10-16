@@ -2,6 +2,9 @@
 
 [Documentation map](../README.md) · [Subtitle unit](../../stacks/subtitles/README.md)
 
+[Bazarr](bazarr.md) is the separate Radarr/Sonarr subtitle integration. This page
+owns the existing manual NensaySubs/FFsubsync workflow; it does not invoke Bazarr.
+
 [scripts/download-and-sync-subs.bash](../../scripts/download-and-sync-subs.bash)
 is a host-operated workflow coordinating NensaySubs and FFsubsync. It remains in
 `scripts/`, because it serves both tools and can align existing subtitles without

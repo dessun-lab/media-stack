@@ -4,6 +4,8 @@ Media Stack documents repository declarations separately from deployed state.
 Luis confirms the four production stacks are operational after successful cutover
 (operator update recorded 2026-10-11). The old monolith was removed; the shared
 network and Portainer variables are provisioned. Runtime authority remains Luis's.
+Bazarr was added to repository declarations on 2026-10-15; its deployment and
+application acceptance remain pending separately from the completed cutover.
 
 | Subject | Owning authority |
 | --- | --- |
@@ -16,6 +18,7 @@ network and Portainer variables are provisioned. Runtime authority remains Luis'
 | Shared network provisioning, static addresses and lifecycle | [Networking](operations/networking.md) |
 | Actions → SSH → server checkout | [Synchronization](operations/synchronization.md) |
 | Cross-tool subtitle workflow | [Subtitle operation](operations/subtitles.md) |
+| Bazarr, Radarr/Sonarr setup and Spanish/English subtitle acceptance | [Bazarr operation](operations/bazarr.md) |
 | Tool source and manual builds | [Tool index](tools/README.md), then tool-local READMEs |
 | Temporary migration operation/history | [Canaries](../canaries/README.md), then scenario README/MIGRATIONS |
 | Approved structure, rationale and acceptance | [Restructuring](design/restructuring.md), [unit decisions](design/production-units.md), [network/variables](design/network-and-variables.md) |

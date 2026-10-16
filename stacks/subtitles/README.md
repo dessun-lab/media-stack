@@ -1,23 +1,35 @@
 # Subtitles
 
-Acquire, place and align subtitles using the dedicated scraper VPN and cross-tool workflow.
+Manage Radarr/Sonarr subtitles with Bazarr; retain the dedicated scraper VPN and
+manually operated cross-tool workflow.
 
-**Services:** `gluetun_scrapers`, `flaresolverr_subs`, `nensaysubs`, `ffsubsync`.
+**Services:** `bazarr`, `gluetun_scrapers`, `flaresolverr_subs`, `nensaysubs`, `ffsubsync`.
 
 [Compose](compose.yml) owns exact configuration. [PORTAINER metadata](PORTAINER.md)
 and the blank [environment contract](.env.example) are Luis's configuration handoff.
 Luis confirms this production stack is operational after cutover (operator update
 recorded 2026-10-11); runtime operations remain his responsibility.
+**Bazarr is a subsequent repository addition (2026-10-15), pending Luis's deployment
+and application setup.** Follow the [Bazarr runbook](../../docs/operations/bazarr.md)
+for Radarr/Sonarr integration, Spanish/English profiles and Jellyfin acceptance.
 
-The dedicated scraper Gluetun owns the network namespace for FlareSolverr Subs
-and NensaySubs. NensaySubs also depends on FlareSolverr Subs and uses its loopback
+The dedicated scraper Gluetun owns the network namespace for Bazarr, FlareSolverr
+Subs and NensaySubs. NensaySubs also depends on FlareSolverr Subs and uses its loopback
 `http://127.0.0.1:8191/v1`. FFsubsync has no network dependency but participates
 in the same [host workflow](../../docs/operations/subtitles.md) and media writes.
 
 ## Operational knowledge
 
+- Bazarr shares `gluetun_scrapers` at `172.18.0.10`, waits for VPN health and
+  follows explicit Compose restarts of its owner. It calls Radarr/Sonarr at their
+  existing static IPs through narrow local firewall exceptions, and writes the same library
+  mounts at `/movies`, `/tv` and `/shows`. `/config` belongs to Bazarr alone.
+  Supply `BAZARR_HOST` (host bind address), `PUID`, `PGID` and `TZ` in Portainer;
+  UI port `6767` is published by Gluetun. No cross-stack Compose dependency is introduced.
 - `gluetun_scrapers` retains `172.18.0.10`, separate SCRAPER VPN inputs, tunnel
-  device/capability and runtime `arrstack/gluetun-scrapers`; no published ports.
+  device/capability and runtime `arrstack/gluetun-scrapers`. It now publishes Bazarr's
+  UI and permits outbound access to manager IPs `.4` and `.5` only. These exceptions
+  also apply to its other namespace consumers; internet egress remains VPN-routed.
 - VPN/solver retain `unless-stopped`; NensaySubs and FFsubsync retain restart `no`.
   Dependency health/restart conditions remain unchanged.
 - [NensaySubs](../../tools/nensaysubs/README.md) retains its idle image command,
@@ -33,6 +45,7 @@ in the same [host workflow](../../docs/operations/subtitles.md) and media writes
 
 | Service | Image | Version / tag |
 | --- | --- | --- |
+| `bazarr` | `lscr.io/linuxserver/bazarr` | `v1.6.2-ls367` + digest pin (see central versions) |
 | `gluetun_scrapers` | `qmcgaw/gluetun` | `v3.41.3` |
 | `flaresolverr_subs` | `ghcr.io/flaresolverr/flaresolverr` | `v3.5.2` |
 | `nensaysubs` | `nensaysubs` | `latest` |

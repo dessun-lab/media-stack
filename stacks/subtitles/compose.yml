@@ -1,13 +1,39 @@
 services:
 
   # ============================================================
+  # BAZARR — Spanish/English subtitles for Radarr and Sonarr libraries
+  # Shares the scraper VPN; Gluetun publishes its UI and permits manager access.
+  # ============================================================
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:v1.6.2-ls367@sha256:c1673816321156b904af9b7e6415ea547ae9622e4acc375358f1e1eb9ed1e904
+    container_name: bazarr
+    restart: unless-stopped
+    network_mode: service:gluetun_scrapers
+    depends_on:
+      gluetun_scrapers:
+        condition: service_healthy
+        restart: true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - UMASK=002
+      - TZ=${TZ}
+    volumes:
+      - /home/devops/runtime/arrstack/bazarr:/config
+      - /home/devops/runtime/arrstack/radarr/movies:/movies
+      - /home/devops/runtime/arrstack/sonarr/tv:/tv
+      - /home/devops/runtime/arrstack/sonarr/shows:/shows
+
+  # ============================================================
   # GLUETUN SCRAPERS — Dedicated subtitle VPN namespace
-  # NensaySubs and its FlareSolverr share this tunnel and loopback.
+  # Bazarr, NensaySubs and its FlareSolverr share this tunnel and loopback.
   # ============================================================
   gluetun_scrapers:
     image: qmcgaw/gluetun:v3.41.3
     container_name: gluetun_scrapers
     restart: unless-stopped
+    ports:
+      - "${BAZARR_HOST}:6767:6767"
     cap_add:
       - NET_ADMIN
     devices:
@@ -21,7 +47,9 @@ services:
       - WIREGUARD_ADDRESSES=${SCRAPER_WIREGUARD_ADDRESSES}
       - SERVER_COUNTRIES=${SCRAPER_SERVER_COUNTRIES}
       - TZ=${TZ}
-      # - FIREWALL_OUTBOUND_SUBNETS=172.21.0.0/16,10.10.0.0/24
+      # Local manager exceptions apply to all consumers of this VPN namespace.
+      - FIREWALL_OUTBOUND_SUBNETS=172.18.0.4/32,172.18.0.5/32
+      - FIREWALL_INPUT_PORTS=6767
       # - DNS_UPSTREAM_RESOLVER_TYPE=plain
       # - DNS_UPSTREAM_PLAIN_ADDRESSES=1.1.1.1:53,8.8.8.8:53
     networks:
